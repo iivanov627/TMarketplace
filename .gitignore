@@ -1,0 +1,54 @@
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.yaml
+application-secret.yml
+application-secret.yaml
+
+# Java / Spring Boot
+target/
+build/
+.gradle/
+*.class
+*.jar
+*.war
+*.log
+
+# Node.js / React
+node_modules/
+dist/
+.next/
+coverage/
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker volumes and local data
+data/
+postgres-data/
+kafka-data/
+minio-data/
+
+# Local certificates and keys
+*.pem
+*.key
+*.p12
+*.jks
