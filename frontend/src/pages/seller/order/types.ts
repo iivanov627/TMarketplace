@@ -1,0 +1,2 @@
+﻿// SellerOrderDetails
+export {};

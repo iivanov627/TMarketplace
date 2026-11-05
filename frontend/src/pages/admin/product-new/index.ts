@@ -1,0 +1,1 @@
+﻿export { AdminProductNewPage } from './AdminProductNewPage';

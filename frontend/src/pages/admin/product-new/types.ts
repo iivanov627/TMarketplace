@@ -1,0 +1,2 @@
+﻿// CreateProductRequest
+export {};

@@ -1,0 +1,2 @@
+﻿// getMyProductById, updateProduct
+export {};

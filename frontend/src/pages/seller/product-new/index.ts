@@ -1,0 +1,1 @@
+﻿export { SellerProductNewPage } from './SellerProductNewPage';

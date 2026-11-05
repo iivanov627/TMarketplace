@@ -1,0 +1,2 @@
+﻿// getAnyProductById, updateAnyProduct
+export {};

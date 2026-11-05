@@ -1,0 +1,2 @@
+﻿// createProductAsAdmin
+export {};

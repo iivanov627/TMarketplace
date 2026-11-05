@@ -1,0 +1,2 @@
+﻿// ClientSearchResult, AccrueBonusesRequest
+export {};

@@ -1,0 +1,2 @@
+﻿// AdminProduct
+export {};

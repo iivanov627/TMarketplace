@@ -1,0 +1,2 @@
+﻿// createProduct
+export {};
