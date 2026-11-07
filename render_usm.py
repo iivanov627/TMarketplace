@@ -57,23 +57,35 @@ def render_with_jar(source: str, output: Path, jar: Path) -> None:
 def render_with_docker(source: str, output: Path, image: str) -> None:
     docker = shutil.which("docker")
     if not docker:
-        raise RuntimeError("Не найден ни PLANTUML_JAR, ни Docker.")
+        raise RuntimeError("Не найден Docker.")
+
     output.parent.mkdir(parents=True, exist_ok=True)
+
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp).resolve()
         puml = tmpdir / "usm.puml"
         puml.write_text(source, encoding="utf-8")
+
         subprocess.run(
             [
-                docker, "run", "--rm",
-                "-v", f"{tmpdir}:/work",
-                image, "-tsvg", "/work/usm.puml",
+                docker,
+                "run",
+                "--rm",
+                "-v", f"{tmpdir}:/data",
+                image,
+                "-tsvg",
+                "usm.puml",
             ],
             check=True,
         )
+
         generated = tmpdir / "usm.svg"
+
         if not generated.exists():
-            raise RuntimeError("Docker/PlantUML не создал usm.svg.")
+            raise RuntimeError(
+                "PlantUML завершился, но файл usm.svg не найден."
+            )
+
         shutil.copy2(generated, output)
 
 
