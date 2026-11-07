@@ -1,0 +1,44 @@
+name: Update User Story Map
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "USM_marketplace.md"
+      - "render_usm.py"
+      - ".github/workflows/update-usm.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "USM_marketplace.md"
+      - "render_usm.py"
+      - ".github/workflows/update-usm.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: update-usm-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  render-usm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Render PlantUML diagram
+        run: |
+          python3 render_usm.py USM_marketplace.md --output docs/usm.svg
+
+      - name: Commit updated SVG
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs(usm): update generated user story map"
+          file_pattern: "docs/usm.svg"
