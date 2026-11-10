@@ -11,36 +11,40 @@ spring:
         webflux:
           routes:
             - id: auth-service
-              uri: http://localhost:8081
+              uri: http://${SERVICE_HOST:auth-service}:8081
               predicates:
                 - Path=/auth/**
 
             - id: catalog-service
-              uri: http://localhost:8082
+              uri: http://${SERVICE_HOST:catalog-service}:8082
               predicates:
                 - Path=/api/products/**
 
             - id: user-service
-              uri: http://localhost:8083
+              uri: http://${SERVICE_HOST:user-service}:8083
               predicates:
                 - Path=/api/user/**
 
             - id: cart-service
-              uri: http://localhost:8084
+              uri: http://${SERVICE_HOST:cart-service}:8084
               predicates:
                 - Path=/api/cart/**
 
             - id: order-service
-              uri: http://localhost:8085
+              uri: http://${SERVICE_HOST:order-service}:8085
               predicates:
                 - Path=/api/order/**
 
             - id: bonus-service
-              uri: http://localhost:8086
+              uri: http://${SERVICE_HOST:bonus-service}:8086
               predicates:
                 - Path=/api/bonus/**
 
             - id: notification-service
-              uri: http://localhost:8087
+              uri: http://${SERVICE_HOST:notification-service}:8087
               predicates:
                 - Path=/api/notification/**
+
+jwt:
+  secret: ${JWT_SECRET}
+  issuer: ${JWT_ISSUER:auth-service}
