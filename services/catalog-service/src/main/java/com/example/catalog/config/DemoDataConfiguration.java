@@ -21,7 +21,6 @@ import java.util.UUID;
 public class DemoDataConfiguration {
 
     @Bean
-    CommandLineRunner loadDemoData(CategoryRepository categories, ProductRepository products) {
     CommandLineRunner loadDemoData(
             CategoryRepository categories,
             ProductRepository products,
@@ -54,7 +53,6 @@ public class DemoDataConfiguration {
                     .price(new BigDecimal("999.00"))
                     .stock(2)
                     .status(ProductStatus.DRAFT)
-                    .build());
                     .build();
             draft.attachPriceAndInventory();
             draft = products.save(draft);
