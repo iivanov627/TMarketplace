@@ -6,11 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * @param secret
- * @param accessTokenExpiration
- * @param refreshTokenExpiration
- */
 @Validated
 @ConfigurationProperties(prefix = "jwt")
 public record JwtProperties(
