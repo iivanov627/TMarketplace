@@ -9,7 +9,12 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "products")
@@ -33,26 +38,26 @@ public class Product {
     @NotNull
     private Category category;
 
-    @Column(nullable = false, length = 200)
+    @Column(nullable = false, length = 150)
     @NotBlank
     private String name;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, length = 2000)
     @NotBlank
     private String description;
 
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Transient
     @NotNull
     @DecimalMin(value = "0.01")
     private BigDecimal price;
 
-    @Column(nullable = false)
+    @Transient
     @NotNull
     @Min(0)
     private Integer stock;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
+    @Convert(converter = ProductStatusConverter.class)
+    @Column(name = "status_id", nullable = false)
     private ProductStatus status;
 
     @Column(name = "created_at", nullable = false)
@@ -60,6 +65,63 @@ public class Product {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<ProductPrice> productPrices = new ArrayList<>();
+
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private ProductInventory productInventory;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private JsonNode attributes;
+
+    public BigDecimal getPrice() {
+        if (productPrices != null && !productPrices.isEmpty()) {
+            return productPrices.stream()
+                    .filter(priceRow -> priceRow.getEndDate() == null)
+                    .max(java.util.Comparator.comparing(ProductPrice::getStartDate))
+                    .map(ProductPrice::getPrice)
+                    .orElse(price);
+        }
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+        if (productPrices == null) productPrices = new ArrayList<>();
+        ProductPrice current = productPrices.stream()
+                .filter(priceRow -> priceRow.getEndDate() == null)
+                .max(java.util.Comparator.comparing(ProductPrice::getStartDate))
+                .orElse(null);
+        if (current != null && current.getPrice().compareTo(price) == 0) return;
+        if (current != null) current.closeAt(Instant.now());
+        productPrices.add(new ProductPrice(this, price));
+    }
+
+    public Integer getStock() {
+        return productInventory == null ? stock : productInventory.getQuantity();
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+        if (productInventory != null) productInventory.setQuantity(stock);
+    }
+
+    public void attachPriceAndInventory() {
+        if ((productPrices == null || productPrices.isEmpty()) && price != null) {
+            productPrices = new ArrayList<>();
+            productPrices.add(new ProductPrice(this, price));
+        }
+        if (productInventory == null && stock != null) productInventory = new ProductInventory(this, stock);
+    }
+
+    @PostLoad
+    protected void loadPriceAndInventory() {
+        price = getPrice();
+        stock = productInventory == null ? null : productInventory.getQuantity();
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -71,6 +133,7 @@ public class Product {
         if (status == null) {
             status = ProductStatus.DRAFT;
         }
+        attachPriceAndInventory();
     }
 
     @PreUpdate
