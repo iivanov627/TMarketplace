@@ -16,13 +16,10 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -34,7 +31,6 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final String DEFAULT_ROLE = "BUYER";
-    private static final int BCRYPT_MAX_BYTES = 72;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -51,10 +47,7 @@ public class AuthService {
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
-        if (isTooLongForBcrypt(request.password())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Password must not exceed " + BCRYPT_MAX_BYTES + " bytes in UTF-8");
-        }
+
         String login = normalize(request.login());
         if (userRepository.existsByLogin(login)) {
             throw new LoginAlreadyTakenException(login);
@@ -83,8 +76,7 @@ public class AuthService {
 
         boolean hasPassword = user != null && user.getPasswordHash() != null;
         String hashToCheck = hasPassword ? user.getPasswordHash() : dummyHash;
-        boolean passwordMatches = !isTooLongForBcrypt(request.password())
-                && passwordEncoder.matches(request.password(), hashToCheck);
+        boolean passwordMatches = passwordEncoder.matches(request.password(), hashToCheck);
 
         if (!hasPassword || !passwordMatches) {
             throw new InvalidCredentialsException();
@@ -135,9 +127,5 @@ public class AuthService {
 
     private static String normalize(String login) {
         return login.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private static boolean isTooLongForBcrypt(String password) {
-        return password.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES;
     }
 }
