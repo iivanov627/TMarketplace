@@ -15,11 +15,12 @@ import java.util.UUID;
 public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Query("""
-            select p from Product p
+            select distinct p from Product p
+            join p.productPrices currentPrice on currentPrice.endDate is null
             where p.status = :status
               and (:categoryId is null or p.category.id = :categoryId)
-              and (:minPrice is null or p.price >= :minPrice)
-              and (:maxPrice is null or p.price <= :maxPrice)
+              and (:minPrice is null or currentPrice.price >= :minPrice)
+              and (:maxPrice is null or currentPrice.price <= :maxPrice)
             order by p.createdAt desc
             """)
     List<Product> searchPublished(
