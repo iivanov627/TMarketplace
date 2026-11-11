@@ -4,16 +4,13 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
-import java.time.Instant;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(
-        name = "categories",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_category_slug", columnNames = "slug")
-        }
-)
+@Table(name = "categories")
 @Getter
 @Setter
 @Builder
@@ -29,30 +26,11 @@ public class Category {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @NotBlank
-    @Column(nullable = false, length = 100)
-    private String slug;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        Instant now = Instant.now();
-
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = Instant.now();
-    }
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private JsonNode attributes;
 }
