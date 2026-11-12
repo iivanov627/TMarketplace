@@ -1,46 +1,55 @@
 # Catalog service
 
-Java 21 / Spring Boot service for product catalog. The default profile uses an in-memory H2 database and inserts a demo category with one published product and one draft, so it can be started without PostgreSQL or other services.
+Java 21 / Spring Boot service for the product catalog. PostgreSQL stores catalog data; Liquibase creates and versions the schema on startup. The default profile adds one demo category, a published product, and a draft.
 
-## Product fields and publication rules
+## Database schema
 
-- Required: seller ID, category, name, description, price and stock.
-- Name is limited to 200 characters; category name and slug are limited to 100 characters.
-- Price must be at least `0.01`; stock must be zero or greater.
-- New products default to `DRAFT`. Only products with status `PUBLISHED` appear in the public list. Other statuses are `PENDING_MODERATION`, `REJECTED` and `ARCHIVED`.
-- A category has a unique slug and can have a parent category.
+The service maps `products`, `product_statuses`, `product_prices`, `product_inventory`, and `categories` to the provided catalog schema. Product status is stored as `status_id`; prices and quantity are stored in their own tables. Product/category attributes use PostgreSQL `jsonb`.
+
+Product names are limited to 150 characters, descriptions to 2,000, and category names to 100. Prices must be at least `0.01`; stock must be zero or greater. New products default to `DRAFT`, and only `PUBLISHED` products appear in public search.
 
 ## Run
 
-From this directory:
+Requires JDK 21+, Maven 3.6+, and PostgreSQL. Create the `catalog_db` database, then run from this directory:
 
 ```bash
 mvn spring-boot:run
 ```
 
-Requires JDK 21+ and Maven 3.6+. The HTTP port defaults to `8082` and can be changed with `PORT`.
+The default connection is `jdbc:postgresql://localhost:5432/catalog_db`, username `postgres`, password `postgres`. Override these with `CATALOG_DATABASE_URL`, `CATALOG_DATABASE_USERNAME`, and `CATALOG_DATABASE_PASSWORD`. Liquibase applies the schema migrations; Hibernate validates the schema at startup. If the old BIGINT catalog tables are present, the first migration moves them to `catalog_legacy` so their data is retained while the new UUID-based tables are created in `public`.
 
-## Check
+To run auth-service and catalog-service together locally, copy the repository-root `.env.example` to `.env`, set your database credentials and a random Base64 JWT secret, then load it in each service terminal before starting Maven:
 
-- Swagger UI: <http://localhost:8082/swagger-ui.html>
-- OpenAPI JSON: <http://localhost:8082/v3/api-docs>
-- Health: `curl http://localhost:8082/api/products/health`
-- Public list: `curl http://localhost:8082/api/products`
-- Filter by category and price: `curl 'http://localhost:8082/api/products?categoryId=<UUID>&minPrice=100&maxPrice=5000'`
-- H2 console: <http://localhost:8082/h2-console> (JDBC URL `jdbc:h2:mem:catalogdb`, user `sa`, empty password)
+```bash
+set -a
+source ../../.env
+set +a
+mvn spring-boot:run
+```
+
+Run this from either `services/auth-service` or `services/catalog-service`. The actual repository-root `.env` is git-ignored and should not be committed.
+
+## Check the API
+
+- Swagger UI: <http://localhost:8080/swagger-ui.html>
+- OpenAPI JSON: <http://localhost:8080/v3/api-docs>
+- Health: `curl http://localhost:8080/api/products/health`
+- Public list: `curl http://localhost:8080/api/products`
+- Text search and filters: `curl 'http://localhost:8080/api/products?q=телефон&categoryId=<UUID>&minPrice=100&maxPrice=5000'`
+- Category and price filter: `curl 'http://localhost:8080/api/products?categoryId=<UUID>&minPrice=100&maxPrice=5000'`
 
 The public list should contain `Демонстрационный товар` with status `PUBLISHED` and omit `Черновик для проверки фильтра`.
 
-## Draft and inventory API
+## Roles and moderation
 
-Create a draft with `POST /api/products/drafts` and JSON fields `sellerId`, `categoryId`, `name`, `description`, `price`, and `stock`. Creation always sets status to `DRAFT`.
+Write operations require a JWT signed by auth-service with HS256. Both services must receive the same Base64 `JWT_SECRET` (at least 32 decoded bytes) and `JWT_ISSUER` (defaults to `auth-service`). The catalog validates the signature, issuer, expiry, and roles locally; it does not call auth-service for each request or fetch a JWKS. The token must contain `roles` as an array with `SELLER` or `ADMIN`, and the seller UUID in `sub` or `userId`. `seller_id` is UUID and intentionally has no cross-database FK.
 
-Edit all draft fields with `PUT /api/products/{productId}/draft?sellerId=<seller UUID>` and the same JSON body. The seller ID in the body must match the owner. Only draft products can be fully edited.
+In Swagger, click **Authorize** and enter the bearer token. `POST /api/products/drafts` creates a draft; `POST /api/products/{productId}/submit-for-moderation` moves it to `PENDING_MODERATION`.
 
-Change price and stock with `PATCH /api/products/{productId}/price-stock?sellerId=<seller UUID>` and body `{"price":1499.00,"stock":8}`. Price must be at least `0.01`; stock must be zero or more. The supplied seller ID must own the product.
+## Search and product editing
 
-The public list accepts any combination of `categoryId`, `minPrice`, and `maxPrice`; both price bounds are inclusive. If `minPrice` is greater than `maxPrice`, the service returns HTTP 400. Seller IDs are passed explicitly for this prototype; replace this with the authenticated seller identity from JWT before treating the write endpoints as production-secure.
+`GET /api/products` searches Elasticsearch across name and description and filters by status, category, and price. Elasticsearch is the only search backend on this branch. If it is unavailable, the API returns HTTP 503. Product writes update Elasticsearch best-effort.
 
-Run the automated check from this directory with `mvn test`. It verifies that drafts are excluded from the public product list.
+Create a draft with `POST /api/products/drafts` and JSON fields `sellerId`, `categoryId`, `name`, `description`, `price`, and `stock`. Edit a draft using `PUT /api/products/{productId}/draft`. Change price and stock using `PATCH /api/products/{productId}/price-stock` with body `{"price":1499.00,"stock":8}`. Price history is represented by multiple `product_prices` rows; the active price has no `end_date`.
 
-To use a persistent database, provide a PostgreSQL datasource configuration and run with the `prod` profile; demo seed data is disabled in that profile.
+Set the `CATALOG_DATABASE_*` variables for deployment. Demo seed data is disabled with the `prod` profile.
