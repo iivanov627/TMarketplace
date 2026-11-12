@@ -6,9 +6,11 @@ import com.example.catalog.dto.ProductInventoryUpdateRequest;
 import com.example.catalog.entity.ProductSearchDocument;
 import com.example.catalog.entity.Category;
 import com.example.catalog.entity.Product;
+import com.example.catalog.entity.ProductSearchAlias;
 import com.example.catalog.entity.ProductStatus;
 import com.example.catalog.repository.CategoryRepository;
 import com.example.catalog.repository.ProductRepository;
+import com.example.catalog.repository.ProductSearchAliasRepository;
 import com.example.catalog.exception.ElasticsearchUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductSearchAliasRepository searchAliases;
     private final ElasticsearchProductSearchService elasticsearchSearch;
 
     @Transactional(readOnly = true)
@@ -43,12 +46,18 @@ public class ProductService {
         try {
             List<ProductSearchDocument> results = elasticsearchSearch.searchPublished(
                     normalizedQuery, categoryId, minPrice, maxPrice);
-            return results.stream().map(this::toResponse).toList();
+            if (!results.isEmpty()) {
+                return results.stream().map(this::toResponse).toList();
+            }
         } catch (ElasticsearchUnavailableException exception) {
-            log.error("Elasticsearch is unavailable; catalog search cannot be completed", exception);
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE, "Product search is temporarily unavailable", exception);
+            log.warn("Elasticsearch is unavailable; searching the SQL alias table instead");
         }
+
+        List<ProductSearchAlias> fallbackResults = normalizedQuery == null
+                ? searchAliases.searchWithoutText(ProductStatus.PUBLISHED, categoryId, minPrice, maxPrice)
+                : searchAliases.searchWithText(
+                        ProductStatus.PUBLISHED, categoryId, minPrice, maxPrice, normalizedQuery);
+        return fallbackResults.stream().map(this::toResponse).toList();
     }
 
     @Transactional
@@ -58,7 +67,7 @@ public class ProductService {
                 .sellerId(request.sellerId()).category(category).name(request.name())
                 .description(request.description()).price(request.price()).stock(request.stock())
                 .status(ProductStatus.DRAFT).build();
-        return saveAndIndexProduct(product);
+        return saveAndUpdateSearchAlias(product);
     }
 
     @Transactional
@@ -73,7 +82,7 @@ public class ProductService {
         product.setDescription(request.description());
         product.setPrice(request.price());
         product.setStock(request.stock());
-        return saveAndIndexProduct(product);
+        return saveAndUpdateSearchAlias(product);
     }
 
     @Transactional
@@ -82,7 +91,7 @@ public class ProductService {
         Product product = getProductForActor(productId, sellerId, admin);
         product.setPrice(request.price());
         product.setStock(request.stock());
-        return saveAndIndexProduct(product);
+        return saveAndUpdateSearchAlias(product);
     }
 
     @Transactional
@@ -90,13 +99,14 @@ public class ProductService {
         Product product = getProductForActor(productId, sellerId, admin);
         ensureDraft(product);
         product.setStatus(ProductStatus.PENDING_MODERATION);
-        return saveAndIndexProduct(product);
+        return saveAndUpdateSearchAlias(product);
     }
 
-    private ProductResponse saveAndIndexProduct(Product product) {
+    private ProductResponse saveAndUpdateSearchAlias(Product product) {
         product.attachPriceAndInventory();
         product = productRepository.save(product);
         ProductResponse response = toResponse(product);
+        searchAliases.save(ProductSearchAlias.from(product));
         elasticsearchSearch.index(product);
         return response;
     }
@@ -127,6 +137,11 @@ public class ProductService {
 
     private ProductResponse toResponse(Product product) {
         return new ProductResponse(product.getId(), product.getSellerId(), product.getCategory().getId(),
+                product.getName(), product.getDescription(), product.getPrice(), product.getStock(), product.getStatus());
+    }
+
+    private ProductResponse toResponse(ProductSearchAlias product) {
+        return new ProductResponse(product.getProductId(), product.getSellerId(), product.getCategoryId(),
                 product.getName(), product.getDescription(), product.getPrice(), product.getStock(), product.getStatus());
     }
 

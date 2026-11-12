@@ -4,7 +4,7 @@ Java 21 / Spring Boot service for the product catalog. PostgreSQL stores catalog
 
 ## Database schema
 
-The service maps `products`, `product_statuses`, `product_prices`, `product_inventory`, and `categories` to the provided catalog schema. Product status is stored as `status_id`; prices and quantity are stored in their own tables. Product/category attributes use PostgreSQL `jsonb`.
+The service maps `products`, `product_statuses`, `product_prices`, `product_inventory`, and `categories` to the provided catalog schema. Product status is stored as `status_id`; the current price and quantity are stored in their own tables. Product/category attributes use PostgreSQL `jsonb`. `product_search_aliases` is an additional SQL projection used by the search fallback.
 
 Product names are limited to 150 characters, descriptions to 2,000, and category names to 100. Prices must be at least `0.01`; stock must be zero or greater. New products default to `DRAFT`, and only `PUBLISHED` products appear in public search.
 
@@ -48,8 +48,8 @@ In Swagger, click **Authorize** and enter the bearer token. `POST /api/products/
 
 ## Search and product editing
 
-`GET /api/products` searches Elasticsearch across name and description and filters by status, category, and price. Elasticsearch is the only search backend on this branch. If it is unavailable, the API returns HTTP 503. Product writes update Elasticsearch best-effort.
+`GET /api/products` searches Elasticsearch across name and description and filters by status, category, and price. Product writes update Elasticsearch best-effort and transactionally update the `product_search_aliases` SQL projection. The projection serves as fallback when Elasticsearch is unavailable or returns no results.
 
-Create a draft with `POST /api/products/drafts` and JSON fields `sellerId`, `categoryId`, `name`, `description`, `price`, and `stock`. Edit a draft using `PUT /api/products/{productId}/draft`. Change price and stock using `PATCH /api/products/{productId}/price-stock` with body `{"price":1499.00,"stock":8}`. Price history is represented by multiple `product_prices` rows; the active price has no `end_date`.
+Create a draft with `POST /api/products/drafts` and JSON fields `sellerId`, `categoryId`, `name`, `description`, `price`, and `stock`. Edit a draft using `PUT /api/products/{productId}/draft`. Change price and stock using `PATCH /api/products/{productId}/price-stock` with body `{"price":1499.00,"stock":8}`. Price history is represented by `product_prices`; currently the service keeps one row per product and updates its start date when the price changes.
 
 Set the `CATALOG_DATABASE_*` variables for deployment. Demo seed data is disabled with the `prod` profile.

@@ -5,6 +5,8 @@ import com.example.catalog.entity.Product;
 import com.example.catalog.entity.ProductStatus;
 import com.example.catalog.repository.CategoryRepository;
 import com.example.catalog.repository.ProductRepository;
+import com.example.catalog.repository.ProductSearchAliasRepository;
+import com.example.catalog.entity.ProductSearchAlias;
 import com.example.catalog.entity.ProductSearchDocument;
 import com.example.catalog.exception.ElasticsearchUnavailableException;
 import com.example.catalog.service.ElasticsearchProductSearchService;
@@ -47,6 +49,9 @@ class ProductControllerTest {
     CategoryRepository categories;
 
     @Autowired
+    ProductSearchAliasRepository searchAliases;
+
+    @Autowired
     ProductService productService;
 
     @MockBean
@@ -56,10 +61,14 @@ class ProductControllerTest {
 
     @BeforeEach
     void setUp() {
+        searchAliases.deleteAll();
         products.deleteAll();
         categories.deleteAll();
         Category category = categories.save(Category.builder().name("Книги").build());
         publishedProduct = products.save(product(category, "Опубликован", ProductStatus.PUBLISHED));
+        Product draft = products.save(product(category, "Черновик", ProductStatus.DRAFT));
+        searchAliases.save(ProductSearchAlias.from(publishedProduct));
+        searchAliases.save(ProductSearchAlias.from(draft));
         when(elasticsearchSearch.searchPublished(null, null, null, null))
                 .thenReturn(List.of(ProductSearchDocument.from(publishedProduct)));
     }
@@ -74,41 +83,43 @@ class ProductControllerTest {
     }
 
     @Test
-    void returnsServiceUnavailableWhenElasticsearchIsUnavailable() throws Exception {
+    void fallsBackToSqlAliasWhenElasticsearchIsUnavailable() throws Exception {
         when(elasticsearchSearch.searchPublished("Опубликован", null, null, null))
                 .thenThrow(new ElasticsearchUnavailableException(new IOException("connection refused")));
 
         mockMvc.perform(get("/api/products").param("q", "Опубликован"))
-                .andExpect(status().isServiceUnavailable());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Опубликован"));
     }
 
     @Test
-    void createsAndUpdatesProductAndIndexesChanges() {
+    void createsAndUpdatesSqlAliasWithProductChanges() {
         UUID sellerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         UUID categoryId = categories.findAll().getFirst().getId();
         ProductDraftRequest createRequest = new ProductDraftRequest(sellerId, categoryId,
                 "Новый товар", "Первое описание", new BigDecimal("50.00"), 4);
 
         var created = productService.createDraft(createRequest);
-        var createdProduct = products.findById(created.id()).orElseThrow();
-        assertThat(createdProduct.getName()).isEqualTo("Новый товар");
-        assertThat(createdProduct.getPrice()).isEqualByComparingTo("50.00");
+        var createdAlias = searchAliases.findById(created.id()).orElseThrow();
+        assertThat(createdAlias.getName()).isEqualTo("Новый товар");
+        assertThat(createdAlias.getPrice()).isEqualByComparingTo("50.00");
 
         ProductDraftRequest editRequest = new ProductDraftRequest(sellerId, categoryId,
                 "Обновлённый товар", "Новое описание", new BigDecimal("75.00"), 8);
         productService.updateDraft(created.id(), sellerId, false, editRequest);
 
-        var updatedProduct = products.findById(created.id()).orElseThrow();
-        assertThat(updatedProduct.getName()).isEqualTo("Обновлённый товар");
-        assertThat(updatedProduct.getDescription()).isEqualTo("Новое описание");
-        assertThat(updatedProduct.getPrice()).isEqualByComparingTo("75.00");
-        assertThat(updatedProduct.getStock()).isEqualTo(8);
+        var updatedAlias = searchAliases.findById(created.id()).orElseThrow();
+        assertThat(updatedAlias.getName()).isEqualTo("Обновлённый товар");
+        assertThat(updatedAlias.getDescription()).isEqualTo("Новое описание");
+        assertThat(updatedAlias.getPrice()).isEqualByComparingTo("75.00");
+        assertThat(updatedAlias.getStock()).isEqualTo(8);
 
         productService.updatePriceAndStock(created.id(), sellerId, false,
                 new ProductInventoryUpdateRequest(new BigDecimal("80.00"), 9));
-        var updatedInventory = products.findById(created.id()).orElseThrow();
-        assertThat(updatedInventory.getPrice()).isEqualByComparingTo("80.00");
-        assertThat(updatedInventory.getStock()).isEqualTo(9);
+        var inventoryAlias = searchAliases.findById(created.id()).orElseThrow();
+        assertThat(inventoryAlias.getPrice()).isEqualByComparingTo("80.00");
+        assertThat(inventoryAlias.getStock()).isEqualTo(9);
         verify(elasticsearchSearch, org.mockito.Mockito.times(3)).index(any(Product.class));
     }
 
