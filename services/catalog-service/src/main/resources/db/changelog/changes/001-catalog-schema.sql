@@ -1,6 +1,3 @@
---liquibase formatted sql
-
---changeset codex:001-catalog-schema
 create table categories
 (
     id         uuid primary key default gen_random_uuid(),
@@ -57,7 +54,6 @@ create table product_inventory
 create index idx_products_public_category on products (category_id, created_at desc);
 create index idx_products_status on products (status_id);
 
--- Product search fallback projection maintained transactionally by catalog-service.
 create table product_search_aliases
 (
     product_id   uuid primary key,

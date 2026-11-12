@@ -1,10 +1,5 @@
---liquibase formatted sql
-
---changeset codex:000-archive-legacy-catalog splitStatements:false
 do $$
 begin
-    -- The previous catalog schema used BIGINT identifiers and a different set
-    -- of columns. Preserve it intact before creating the UUID-based schema.
     if exists (
         select 1
         from information_schema.columns
