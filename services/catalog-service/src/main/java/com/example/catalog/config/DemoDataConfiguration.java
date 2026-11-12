@@ -2,11 +2,9 @@ package com.example.catalog.config;
 
 import com.example.catalog.entity.Category;
 import com.example.catalog.entity.Product;
-import com.example.catalog.entity.ProductSearchAlias;
 import com.example.catalog.entity.ProductStatus;
 import com.example.catalog.repository.CategoryRepository;
 import com.example.catalog.repository.ProductRepository;
-import com.example.catalog.repository.ProductSearchAliasRepository;
 import com.example.catalog.service.ElasticsearchProductSearchService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +22,6 @@ public class DemoDataConfiguration {
     CommandLineRunner loadDemoData(
             CategoryRepository categories,
             ProductRepository products,
-            ProductSearchAliasRepository searchAliases,
             ElasticsearchProductSearchService elasticsearchSearch) {
         return args -> {
             if (categories.count() != 0) {
@@ -56,6 +53,10 @@ public class DemoDataConfiguration {
                     .build();
             draft.attachPriceAndInventory();
             draft = products.save(draft);
+
+            for (Product product : new Product[]{published, draft}) {
+                elasticsearchSearch.index(product);
+            }
         };
     }
 }
