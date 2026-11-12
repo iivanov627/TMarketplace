@@ -1,5 +1,6 @@
 package com.example.auth_service.dto;
 
+import com.example.auth_service.validation.StrongPassword;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -14,5 +15,7 @@ public record RegisterRequest(
         @Size(min = 8, max = 72)
         @Pattern(regexp = "^[\\x21-\\x7E]+$",
                 message = "password may contain only latin letters, digits and special characters")
+        @StrongPassword
         String password) {
+
 }
