@@ -6,5 +6,4 @@ databaseChangeLog:
       file: db/changelog/changes/001-catalog-schema.sql
       relativeToChangelogFile: false
   - include:
-      file: db/changelog/changes/002-archive-product-search-alias.sql
-      relativeToChangelogFile: false
+      file: db/changelog/changes/002-statuses-add.sql
