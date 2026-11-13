@@ -1,0 +1,165 @@
+name: marketplace
+
+services:
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the project root .env}
+      JWT_ISSUER: ${JWT_ISSUER:-auth-service}
+      AUTH_SERVICE_URL: http://auth-service:8081
+      CATALOG_SERVICE_URL: http://catalog-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - catalog-service
+    networks:
+      - marketplace
+
+  auth-service:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER:-auth_user}
+      SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD:-local_auth_password}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the project root .env}
+      JWT_ISSUER: ${JWT_ISSUER:-auth-service}
+      JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-900000}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-2592000000}
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - marketplace
+
+  catalog-service:
+    build:
+      context: ../services/catalog-service
+      dockerfile: Dockerfile
+    environment:
+      SERVER_PORT: 8082
+    networks:
+      - marketplace
+
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: ${AUTH_DB_USER:-auth_user}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-local_auth_password}
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  catalog-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: ${CATALOG_DB_USER:-catalog_user}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:-local_catalog_password}
+    volumes:
+      - catalog-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  user-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: ${USER_DB_USER:-user_user}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-local_user_password}
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  cart-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cart_db
+      POSTGRES_USER: ${CART_DB_USER:-cart_user}
+      POSTGRES_PASSWORD: ${CART_DB_PASSWORD:-local_cart_password}
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  order-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: ${ORDER_DB_USER:-order_user}
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD:-local_order_password}
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  bonus-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bonus_db
+      POSTGRES_USER: ${BONUS_DB_USER:-bonus_user}
+      POSTGRES_PASSWORD: ${BONUS_DB_PASSWORD:-local_bonus_password}
+    volumes:
+      - bonus-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  notification-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: ${NOTIFICATION_DB_USER:-notification_user}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-local_notification_password}
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+volumes:
+  auth-db-data:
+  catalog-db-data:
+  user-db-data:
+  cart-db-data:
+  order-db-data:
+  bonus-db-data:
+  notification-db-data:
+
+networks:
+  marketplace:
+    driver: bridge

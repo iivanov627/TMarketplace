@@ -10,13 +10,29 @@ spring:
       server:
         webflux:
           routes:
+            - id: catalog-openapi
+              uri: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
+              predicates:
+                - Path=/catalog/v3/api-docs/**
+              filters:
+                - PreserveHostHeader
+                - RewritePath=/catalog/(?<segment>.*), /${segment}
+
+            - id: auth-openapi
+              uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+              predicates:
+                - Path=/auth-docs/v3/api-docs/**
+              filters:
+                - PreserveHostHeader
+                - RewritePath=/auth-docs/(?<segment>.*), /${segment}
+
             - id: auth-service
-              uri: http://${SERVICE_HOST:auth-service}:8081
+              uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
               predicates:
                 - Path=/auth/**
 
             - id: catalog-service
-              uri: http://${SERVICE_HOST:catalog-service}:8082
+              uri: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
               predicates:
                 - Path=/api/products/**
 
@@ -44,6 +60,15 @@ spring:
               uri: http://${SERVICE_HOST:notification-service}:8087
               predicates:
                 - Path=/api/notification/**
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: catalog-service
+        url: /catalog/v3/api-docs
+      - name: auth-service
+        url: /auth-docs/v3/api-docs
+    urls-primary-name: catalog-service
 
 jwt:
   secret: ${JWT_SECRET}

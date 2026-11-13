@@ -61,6 +61,13 @@ public class JwtSecurityConfig {
                                 "/auth/login",
                                 "/auth/refresh",
                                 "/auth/logout").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                        .pathMatchers(HttpMethod.GET,
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/catalog/v3/api-docs/**",
+                                "/auth-docs/v3/api-docs/**").permitAll()
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt -> jwt.jwtDecoder(jwtDecoder)))
                 .build();
