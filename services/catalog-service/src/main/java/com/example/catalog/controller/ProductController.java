@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import jakarta.validation.Valid;
@@ -96,6 +97,74 @@ public class ProductController {
         boolean admin = isAdmin(jwt);
         UUID sellerId = admin ? null : currentUserId(jwt);
         return productService.submitForModeration(productId, sellerId, admin);
+    }
+
+    @PostMapping("/{productId}/reject")
+    @Operation(summary = "Отклонить товар")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse rejectProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        if (!admin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can reject products");
+        }
+        return productService.rejectProduct(productId);
+    }
+
+    @PatchMapping("/{productId}/archive")
+    @Operation(summary = "Отправить товар в архив")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse archiveProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+        return productService.archiveProduct(productId, sellerId, admin);
+    }
+
+    @PatchMapping("/{productId}/unarchive")
+    @Operation(summary = "Восстановить товар из архива")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse unarchiveProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+        return productService.unarchiveProduct(productId, sellerId, admin);
+    }
+
+    @PatchMapping("/{productId}/hide")
+    @Operation(summary = "Скрыть опубликованный товар")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse hideProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+        return productService.hideProduct(productId, sellerId, admin);
+    }
+
+    @PatchMapping("/{productId}/unhide")
+    @Operation(summary = "Вернуть скрытый товар в публикацию")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse unhideProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+        return productService.unhideProduct(productId, sellerId, admin);
+    }
+
+    @DeleteMapping("/{productId}")
+    @Operation(summary = "Удалить товар навсегда")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse deleteProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+        return productService.deleteProduct(productId, sellerId, admin);
     }
 
     @GetMapping("/health")
