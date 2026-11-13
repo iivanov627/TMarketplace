@@ -1,9 +1,11 @@
 package com.example.catalog.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import com.example.catalog.exception.ElasticsearchUnavailableException;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import com.example.catalog.entity.Product;
 import com.example.catalog.entity.ProductSearchDocument;
 import com.example.catalog.entity.ProductStatus;
@@ -32,6 +34,7 @@ public class ElasticsearchProductSearchService {
         this.indexName = indexName;
     }
 
+    @CircuitBreaker(name = "elasticsearch", fallbackMethod = "fallbackSearch")
     public List<ProductSearchDocument> searchPublished(
             String text, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice) {
         Query query = Query.of(q -> q.bool(bool -> {
@@ -65,8 +68,16 @@ public class ElasticsearchProductSearchService {
                     .filter(Objects::nonNull)
                     .toList();
         } catch (IOException | RuntimeException exception) {
-            throw new com.example.catalog.exception.ElasticsearchUnavailableException(exception);
+            throw new ElasticsearchUnavailableException(exception);
         }
+    }
+
+    public List<ProductSearchDocument> fallbackSearch(
+            String text, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Throwable t) {
+
+        log.warn("Elasticsearch CircuitBreaker is OPEN. Reason: {}", t.getMessage());
+
+        throw new ElasticsearchUnavailableException(t);
     }
 
     public void index(Product product) {
