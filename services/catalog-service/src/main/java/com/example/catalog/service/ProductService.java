@@ -46,7 +46,7 @@ public class ProductService {
         try {
             List<ProductSearchDocument> results = elasticsearchSearch.searchPublished(
                     normalizedQuery, categoryId, minPrice, maxPrice);
-            if (!results.isEmpty()) {
+            if (results != null) {
                 return results.stream().map(this::toResponse).toList();
             }
         } catch (ElasticsearchUnavailableException exception) {
@@ -56,7 +56,7 @@ public class ProductService {
         List<ProductSearchAlias> fallbackResults = normalizedQuery == null
                 ? searchAliases.searchWithoutText(ProductStatus.PUBLISHED, categoryId, minPrice, maxPrice)
                 : searchAliases.searchWithText(
-                        ProductStatus.PUBLISHED, categoryId, minPrice, maxPrice, normalizedQuery);
+                ProductStatus.PUBLISHED, categoryId, minPrice, maxPrice, normalizedQuery);
         return fallbackResults.stream().map(this::toResponse).toList();
     }
 
@@ -73,7 +73,12 @@ public class ProductService {
     @Transactional
     public ProductResponse updateDraft(UUID productId, UUID sellerId, boolean admin, ProductDraftRequest request) {
         Product product = getProductForActor(productId, sellerId, admin);
-        ensureDraft(product);
+        ensureDraftOrRejected(product);
+
+        if (product.getStatus() == ProductStatus.REJECTED) {
+            product.setStatus(ProductStatus.DRAFT);
+        }
+
         if (!product.getSellerId().equals(request.sellerId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sellerId cannot be changed");
         }
@@ -89,6 +94,11 @@ public class ProductService {
     public ProductResponse updatePriceAndStock(
             UUID productId, UUID sellerId, boolean admin, ProductInventoryUpdateRequest request) {
         Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() == ProductStatus.REJECTED) {
+            product.setStatus(ProductStatus.DRAFT);
+        }
+
         product.setPrice(request.price());
         product.setStock(request.stock());
         return saveAndUpdateSearchAlias(product);
@@ -97,8 +107,81 @@ public class ProductService {
     @Transactional
     public ProductResponse submitForModeration(UUID productId, UUID sellerId, boolean admin) {
         Product product = getProductForActor(productId, sellerId, admin);
-        ensureDraft(product);
+        ensureDraftOrRejected(product);
         product.setStatus(ProductStatus.PENDING_MODERATION);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse rejectProduct(UUID productid) {
+        Product product = productRepository.findById(productid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+
+        if (product.getStatus() != ProductStatus.PENDING_MODERATION) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only products pending moderation can be rejected");
+        }
+
+        product.setStatus(ProductStatus.REJECTED);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse hideProduct(UUID productId, UUID sellerId, boolean admin) {
+        Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() != ProductStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only published products can be hidden");
+        }
+
+        product.setStatus(ProductStatus.HIDDEN);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse unhideProduct(UUID productId, UUID sellerId, boolean admin) {
+        Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() != ProductStatus.HIDDEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only hidden products can be unhidden");
+        }
+
+        product.setStatus(ProductStatus.PUBLISHED);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse archiveProduct(UUID productId, UUID sellerId, boolean admin) {
+        Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() != ProductStatus.PUBLISHED && product.getStatus() != ProductStatus.HIDDEN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only published or hidden products can be archived");
+        }
+
+        product.setStatus(ProductStatus.ARCHIVED);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse unarchiveProduct(UUID productId, UUID sellerId, boolean admin) {
+        Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() != ProductStatus.ARCHIVED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product is not archived");
+        }
+
+        product.setStatus(ProductStatus.DRAFT);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse deleteProduct(UUID productId, UUID sellerId, boolean admin) {
+        Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() == ProductStatus.DELETED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Product is already deleted");
+        }
+
+        product.setStatus(ProductStatus.DELETED);
         return saveAndUpdateSearchAlias(product);
     }
 
@@ -129,9 +212,9 @@ public class ProductService {
         return getSellerProduct(productId, sellerId);
     }
 
-    private void ensureDraft(Product product) {
-        if (product.getStatus() != ProductStatus.DRAFT) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft products can be edited");
+    private void ensureDraftOrRejected(Product product) {
+        if (product.getStatus() != ProductStatus.DRAFT && product.getStatus() != ProductStatus.REJECTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft or rejected products can be edited");
         }
     }
 
