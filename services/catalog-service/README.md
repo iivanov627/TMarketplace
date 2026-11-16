@@ -1,55 +1,560 @@
-# Catalog service
+# Catalog Service
 
-Java 21 / Spring Boot service for the product catalog. PostgreSQL stores catalog data; Liquibase creates and versions the schema on startup. The default profile adds one demo category, a published product, and a draft.
+Микросервис каталога товаров маркетплейса на **Java 21** и **Spring Boot**.
 
-## Database schema
+Сервис отвечает за создание, редактирование, публикацию и поиск товаров. В качестве основной базы данных используется PostgreSQL, для полнотекстового поиска — Elasticsearch.
 
-The service maps `products`, `product_statuses`, `product_prices`, `product_inventory`, and `categories` to the provided catalog schema. Product status is stored as `status_id`; the current price and quantity are stored in their own tables. Product/category attributes use PostgreSQL `jsonb`. `product_search_aliases` is an additional SQL projection used by the search fallback.
+Управление схемой базы данных осуществляется с помощью **Liquibase**: при запуске приложения миграции выполняются автоматически.
 
-Product names are limited to 150 characters, descriptions to 2,000, and category names to 100. Prices must be at least `0.01`; stock must be zero or greater. New products default to `DRAFT`, and only `PUBLISHED` products appear in public search.
+Реализован паттерн **Dual-Write с отказоустойчивым SQL Fallback**: изменения товаров сохраняются в PostgreSQL и синхронизируются с Elasticsearch. Если поисковый движок недоступен, сервис переключается на резервную SQL-проекцию.
 
-## Run
+---
 
-Requires JDK 21+, Maven 3.6+, and PostgreSQL. Create the `catalog_db` database, then run from this directory:
+## Технологический стек
 
-```bash
-mvn spring-boot:run
+| Технология | Назначение |
+|---|---|
+| Java 21 | Основной язык разработки |
+| Spring Boot | Backend-фреймворк |
+| Spring Data JPA | Работа с базой данных |
+| PostgreSQL | Основное хранилище данных |
+| Elasticsearch | Полнотекстовый поиск |
+| Liquibase | Миграции и версионирование БД |
+| Spring Security | Аутентификация и авторизация |
+| JWT (HS256) | Проверка токенов доступа |
+| Docker Compose | Запуск инфраструктуры |
+| Swagger / OpenAPI | Документирование и тестирование API |
+| Maven | Сборка и управление зависимостями |
+
+---
+
+## Архитектура и возможности
+
+Основные возможности сервиса:
+
+- Создание и редактирование товаров.
+- Управление категориями товаров.
+- Управление ценами и складскими остатками.
+- Хранение истории изменения цен.
+- Модерация товаров администраторами.
+- Публикация и снятие товаров с публикации через жизненный цикл статусов.
+- Полнотекстовый поиск через Elasticsearch.
+- Фильтрация товаров по категории и диапазону цен.
+- Резервный поиск через PostgreSQL при недоступности Elasticsearch.
+- Локальная проверка JWT без обращения к Auth Service.
+
+### Dual-Write
+
+При создании или изменении товара сервис обновляет:
+
+1. Основные данные в PostgreSQL.
+2. SQL-проекцию `product_search_aliases`, используемую для резервного поиска.
+3. Индекс Elasticsearch.
+
+Таким образом, PostgreSQL выступает основным хранилищем, а Elasticsearch используется для быстрого полнотекстового поиска.
+
+При недоступности Elasticsearch или срабатывании Circuit Breaker сервис использует SQL Fallback.
+
+> Примечание: Dual-Write не является распределённой транзакцией между PostgreSQL и Elasticsearch. Для обеспечения согласованности необходимо учитывать возможность повторной синхронизации поискового индекса.
+
+---
+
+## Структура базы данных
+
+Сервис использует следующие таблицы PostgreSQL:
+
+| Таблица | Назначение |
+|---|---|
+| `products` | Основная информация о товарах |
+| `categories` | Категории товаров и их атрибуты |
+| `product_statuses` | Справочник статусов товаров |
+| `product_prices` | История цен товаров |
+| `product_inventory` | Информация об остатках на складе |
+| `product_search_aliases` | Денормализованная SQL-проекция для резервного поиска |
+
+### Ограничения данных
+
+- Название товара — не более 150 символов.
+- Описание товара — не более 2000 символов.
+- Название категории — не более 100 символов.
+- Атрибуты категорий хранятся в формате `JSONB`.
+- Цена товара не может быть меньше `0.01`.
+- Остаток товара не может быть отрицательным.
+
+### Статусы товаров
+
+| Статус | Описание |
+|---|---|
+| `DRAFT` | Черновик товара |
+| `PENDING_MODERATION` | Ожидает модерации |
+| `PUBLISHED` | Опубликован |
+| `REJECTED` | Отклонён модератором |
+
+Новые товары по умолчанию создаются со статусом `DRAFT`.
+
+В публичном каталоге отображаются только товары со статусом `PUBLISHED`.
+
+---
+
+## Требования
+
+Для запуска проекта необходимы:
+
+- JDK 21 или выше.
+- Maven 3.6 или выше.
+- Docker Desktop.
+- Docker Compose.
+
+---
+
+## Настройка окружения
+
+В корне проекта, рядом с `docker-compose.yml`, необходимо создать файл `.env`.
+
+### Пример файла `.env`
+
+```env
+# JWT
+JWT_SECRET=your_base64_secret
+JWT_ISSUER=auth-service
+
+# Application
+CATALOG_SERVER_PORT=8080
+CATALOG_DATABASE_URL=jdbc:postgresql://localhost:5432/catalog_db
+CATALOG_DATABASE_USERNAME=postgres
+CATALOG_DATABASE_PASSWORD=your_database_password
+
+# Elasticsearch
+ELASTICSEARCH_URI=http://localhost:9200
+
+# Docker PostgreSQL
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_database_password
 ```
 
-The default connection is `jdbc:postgresql://localhost:5432/catalog_db`, username `postgres`, password `postgres`. Override these with `CATALOG_DATABASE_URL`, `CATALOG_DATABASE_USERNAME`, and `CATALOG_DATABASE_PASSWORD`. Liquibase applies the schema migrations; Hibernate validates the schema at startup. If the old BIGINT catalog tables are present, the first migration moves them to `catalog_legacy` so their data is retained while the new UUID-based tables are created in `public`.
+Замените значения на собственные.
 
-To run auth-service and catalog-service together locally, copy the repository-root `.env.example` to `.env`, set your database credentials and a random Base64 JWT secret, then load it in each service terminal before starting Maven:
+**Важно:**
+
+- `JWT_SECRET` должен содержать корректный Base64-секрет, используемый для HS256.
+- `JWT_ISSUER` должен совпадать со значением издателя в JWT.
+- Логин и пароль PostgreSQL должны совпадать с настройками Docker Compose.
+- Не используйте приведённые демонстрационные значения в Production.
+
+Файл `.env` должен находиться в `.gitignore`.
+
+В репозитории необходимо хранить только `.env.example` с примерами переменных и пустыми либо безопасными демонстрационными значениями.
+
+---
+
+## Запуск проекта
+
+### 1. Запуск инфраструктуры
+
+Убедитесь, что Docker Desktop запущен.
+
+Выполните команду из корневой директории проекта:
+
+```bash
+docker compose up -d
+```
+
+Docker Compose запустит необходимые контейнеры:
+
+- PostgreSQL;
+- Elasticsearch.
+
+При первом запуске `init.sql` автоматически создаёт базу данных `catalog_db`.
+
+Проверить состояние контейнеров можно командой:
+
+```bash
+docker compose ps
+```
+
+### 2. Загрузка переменных окружения
+
+Для macOS и Linux выполните:
 
 ```bash
 set -a
-source ../../.env
+source .env
 set +a
+```
+
+Это загрузит переменные из `.env` в текущую сессию терминала.
+
+### 3. Запуск приложения
+
+Запустите приложение через Maven:
+
+```bash
 mvn spring-boot:run
 ```
 
-Run this from either `services/auth-service` or `services/catalog-service`. The actual repository-root `.env` is git-ignored and should not be committed.
+При запуске приложения:
 
-## Check the API
+1. Spring Boot загружает конфигурацию.
+2. Liquibase проверяет и выполняет необходимые миграции.
+3. Создаются или обновляются таблицы PostgreSQL.
+4. Инициализируются компоненты приложения.
+5. В Elasticsearch выполняется необходимая настройка поискового индекса.
 
-- Swagger UI: <http://localhost:8080/swagger-ui.html>
-- OpenAPI JSON: <http://localhost:8080/v3/api-docs>
-- Health: `curl http://localhost:8080/api/products/health`
-- Public list: `curl http://localhost:8080/api/products`
-- Text search and filters: `curl 'http://localhost:8080/api/products?q=телефон&categoryId=<UUID>&minPrice=100&maxPrice=5000'`
-- Category and price filter: `curl 'http://localhost:8080/api/products?categoryId=<UUID>&minPrice=100&maxPrice=5000'`
+При запуске в профиле по умолчанию (не `prod`) создаются демонстрационные данные:
 
-The public list should contain `Демонстрационный товар` with status `PUBLISHED` and omit `Черновик для проверки фильтра`.
+- демо-категория;
+- опубликованный товар «Демонстрационный товар»;
+- черновик «Черновик для проверки фильтра».
 
-## Roles and moderation
+В Production генерация демонстрационных данных отключается.
 
-Write operations require a JWT signed by auth-service with HS256. Both services must receive the same Base64 `JWT_SECRET` (at least 32 decoded bytes) and `JWT_ISSUER` (defaults to `auth-service`). The catalog validates the signature, issuer, expiry, and roles locally; it does not call auth-service for each request or fetch a JWKS. The token must contain `roles` as an array with `SELLER` or `ADMIN`, and the seller UUID in `sub` or `userId`. `seller_id` is UUID and intentionally has no cross-database FK.
+### Запуск через IntelliJ IDEA
 
-In Swagger, click **Authorize** and enter the bearer token. `POST /api/products/drafts` creates a draft; `POST /api/products/{productId}/submit-for-moderation` moves it to `PENDING_MODERATION`.
+Если приложение запускается из IntelliJ IDEA:
 
-## Search and product editing
+1. Откройте конфигурацию запуска приложения.
+2. Укажите основной класс Spring Boot.
+3. Настройте загрузку переменных окружения через плагин EnvFile либо добавьте их вручную в Run Configuration.
+4. Убедитесь, что PostgreSQL и Elasticsearch запущены.
+5. Запустите приложение.
 
-`GET /api/products` searches Elasticsearch across name and description and filters by status, category, and price. Product writes update Elasticsearch best-effort and transactionally update the `product_search_aliases` SQL projection. The projection serves as fallback when Elasticsearch is unavailable or returns no results.
+---
 
-Create a draft with `POST /api/products/drafts` and JSON fields `sellerId`, `categoryId`, `name`, `description`, `price`, and `stock`. Edit a draft using `PUT /api/products/{productId}/draft`. Change price and stock using `PATCH /api/products/{productId}/price-stock` with body `{"price":1499.00,"stock":8}`. Price history is represented by `product_prices`; currently the service keeps one row per product and updates its start date when the price changes.
+## Проверка API
 
-Set the `CATALOG_DATABASE_*` variables for deployment. Demo seed data is disabled with the `prod` profile.
+После успешного запуска приложения доступны следующие адреса:
+
+| Ресурс | URL |
+|---|---|
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| OpenAPI JSON | http://localhost:8080/v3/api-docs |
+| Health Check | http://localhost:8080/api/products/health |
+| Список товаров | http://localhost:8080/api/products |
+
+### Проверка Health Check
+
+```bash
+curl http://localhost:8080/api/products/health
+```
+
+### Получение списка опубликованных товаров
+
+```bash
+curl http://localhost:8080/api/products
+```
+
+### Получение конкретного товара
+
+```bash
+curl http://localhost:8080/api/products/<productId>
+```
+
+### Поиск товаров с фильтрами
+
+```bash
+curl "http://localhost:8080/api/products?q=телефон&categoryId=<UUID>&minPrice=100&maxPrice=5000"
+```
+
+Поддерживаемые параметры:
+
+| Параметр | Описание |
+|---|---|
+| `q` | Поисковый запрос |
+| `categoryId` | UUID категории |
+| `minPrice` | Минимальная цена |
+| `maxPrice` | Максимальная цена |
+
+Для тестирования защищённых эндпоинтов откройте Swagger UI, нажмите **Authorize** и вставьте JWT-токен в формате Bearer.
+
+---
+
+## Аутентификация и авторизация
+
+Операции создания, изменения и модерации товаров требуют JWT-токен.
+
+Сервис самостоятельно проверяет токены и не обращается к Auth Service при каждом запросе.
+
+### Проверки JWT
+
+При обработке запроса выполняются следующие проверки:
+
+- Проверка подписи токена.
+- Проверка алгоритма подписи `HS256`.
+- Проверка издателя (`issuer`).
+- Проверка срока действия (`exp`).
+- Проверка пользовательских ролей.
+- Получение UUID продавца из `sub` или `userId`.
+
+### Поддерживаемые роли
+
+| Роль | Возможности |
+|---|---|
+| `USER`	| Просмотр публичного каталога и карточек опубликованных товаров |
+| `SELLER` | Создание и редактирование собственных товаров |
+| `ADMIN` | Модерация товаров |
+
+Токен должен содержать массив ролей (`SELLER` или `ADMIN`) и UUID пользователя.
+
+UUID продавца передаётся в поле `sub` или `userId`.
+
+---
+
+## ## Жизненный цикл товара
+
+Сервис поддерживает управление жизненным циклом товара: от создания черновика до публикации, скрытия, архивирования и удаления.
+
+### Основные статусы
+
+| Статус | Описание |
+|---|---|
+| `DRAFT` | Черновик товара |
+| `PENDING_MODERATION` | Ожидает модерации |
+| `PUBLISHED` | Опубликован |
+| `REJECTED` | Отклонён модератором |
+| `HIDDEN` | Скрыт продавцом |
+| `ARCHIVED` | Перемещён в архив |
+| `DELETED` | Удалён (soft-delete) |
+
+### Основной сценарий работы
+
+```text
+             Создание товара
+                    |
+                    v
+                 DRAFT
+                    |
+                    | Отправка на модерацию
+                    v
+           PENDING_MODERATION
+              /           \
+             /             \
+        Одобрение         Отклонение
+            |                 |
+            v                 v
+        PUBLISHED          REJECTED
+            |                 |
+            |                 | Редактирование
+            |                 v
+            |               DRAFT
+            |
+       +----+------------------+
+       |           |            |
+       v           v            v
+     HIDDEN     ARCHIVED     DELETED
+       |           |
+       v           v
+   PUBLISHED   PUBLISHED
+   (unhide)   (unarchive)
+```
+
+> Схема показывает основные переходы. Фактическая допустимость переходов определяется бизнес-логикой сервиса.
+
+### Публичные эндпоинты
+
+Доступны пользователям с ролью `USER`.
+
+| HTTP-метод | Endpoint | Назначение | Роль |
+|---|---|---|---|
+| `GET` | `/api/products` | Список опубликованных товаров с поиском и фильтрами по категории и цене | USER |
+| `GET` | `/api/products/{productId}` | Получение карточки конкретного товара (если реализовано) | USER |
+| `GET` | `/api/products/health` | Проверка статуса сервиса | USER |
+
+### Эндпоинты продавца
+
+Доступны пользователям с ролью `SELLER`.
+
+| HTTP-метод | Endpoint | Назначение | Роль |
+|---|---|---|---|
+| `POST` | `/api/products/drafts` | Создать черновик товара | SELLER |
+| `PUT` | `/api/products/{productId}/draft` | Изменить черновик товара | SELLER |
+| `PATCH` | `/api/products/{productId}/price-stock` | Изменить цену и остаток черновика | SELLER |
+| `POST` | `/api/products/{productId}/submit-for-moderation` | Отправить черновик на модерацию | SELLER |
+| `PATCH` | `/api/products/{productId}/hide` | Скрыть опубликованный товар | SELLER |
+| `PATCH` | `/api/products/{productId}/unhide` | Вернуть скрытый товар в публикацию | SELLER |
+| `PATCH` | `/api/products/{productId}/archive` | Отправить товар в архив | SELLER |
+| `PATCH` | `/api/products/{productId}/unarchive` | Восстановить товар из архива | SELLER |
+| `DELETE` | `/api/products/{productId}` | Удалить товар (soft-delete, статус `DELETED`) | SELLER |
+
+### Эндпоинты администратора
+
+Доступны только пользователям с ролью `ADMIN`.
+
+| HTTP-метод | Endpoint | Назначение | Роль |
+|---|---|---|---|
+| `POST` | `/api/products/{productId}/approve` | Одобрить товар и опубликовать | ADMIN |
+| `POST` | `/api/products/{productId}/reject` | Отклонить товар на модерации | ADMIN |
+
+### Особенности управления товарами
+
+**Скрытие товара (`hide`)**
+
+Продавец может временно скрыть опубликованный товар. Скрытый товар не должен отображаться в публичном каталоге.
+
+**Восстановление публикации (`unhide`)**
+
+Возвращает ранее скрытый товар в публичный каталог.
+
+**Архивирование (`archive`)**
+
+Перемещает товар в архив. Архивные товары не отображаются в публичном каталоге.
+
+**Восстановление из архива (`unarchive`)**
+
+Возвращает товар из архива в публикацию.
+
+**Удаление (`DELETE`)**
+
+Используется механизм soft-delete. Физически запись из базы данных не удаляется: товар получает статус `DELETED`.
+
+**Модерация**
+
+Администратор может одобрить или отклонить товар, находящийся на модерации. Одобренный товар получает статус `PUBLISHED`, отклонённый — `REJECTED`.
+---
+
+## Работа с товарами
+
+### Создание черновика
+
+**Endpoint:**
+
+```http
+POST /api/products/drafts
+```
+
+Пример JSON:
+
+```json
+{
+  "sellerId": "00000000-0000-0000-0000-000000000001",
+  "categoryId": "00000000-0000-0000-0000-000000000002",
+  "name": "Смартфон",
+  "description": "Современный смартфон",
+  "price": 1499.00,
+  "stock": 10
+}
+```
+
+После создания товар получает статус `DRAFT`.
+
+### Отправка товара на модерацию
+
+```http
+POST /api/products/{productId}/submit-for-moderation
+```
+
+Продавец отправляет созданный товар на проверку администратору.
+
+После успешного выполнения операции статус меняется на `PENDING_MODERATION`.
+
+### Одобрение товара
+
+```http
+PATCH /api/products/{productId}/approve
+```
+
+Операция доступна только пользователям с ролью `ADMIN`.
+
+После одобрения товар получает статус `PUBLISHED` и становится доступен в публичном каталоге.
+
+### Отклонение товара
+
+```http
+POST /api/products/{productId}/reject
+```
+
+Операция доступна только администраторам.
+
+Отклонённый товар получает статус `REJECTED`.
+
+### Изменение цены и остатка
+
+**Endpoint:**
+
+```http
+PATCH /api/products/{productId}/price-stock
+```
+
+Пример JSON:
+
+```json
+{
+  "price": 1499.00,
+  "stock": 8
+}
+```
+
+Операция позволяет изменить актуальную цену и складской остаток товара.
+
+### История цен
+
+История цен хранится в таблице `product_prices`.
+
+На текущий момент для каждого товара хранится одна актуальная запись. При изменении цены обновляется дата начала действия (`start_date`).
+
+---
+
+## Поиск и SQL Fallback
+
+Для поиска товаров используется Elasticsearch.
+
+### Elasticsearch
+
+Основной поисковый движок обеспечивает:
+
+- Полнотекстовый поиск по названию товара (`name`).
+- Полнотекстовый поиск по описанию (`description`).
+- Фильтрацию по статусу.
+- Фильтрацию по категории.
+- Фильтрацию по диапазону цен.
+
+В публичном поиске доступны только опубликованные товары (`PUBLISHED`).
+
+### SQL Fallback
+
+Если Elasticsearch становится недоступен или срабатывает Circuit Breaker, сервис переключается на резервный SQL-поиск.
+
+Источником резервных данных выступает таблица:
+
+```text
+product_search_aliases
+```
+
+Она представляет собой денормализованную SQL-проекцию, которая обновляется при операциях записи.
+
+Таким образом, даже при временной недоступности Elasticsearch пользователи могут продолжать искать товары через PostgreSQL.
+
+---
+
+## Деплой в Production
+
+Для запуска приложения в Production необходимо:
+
+1. Настроить PostgreSQL.
+2. Настроить Elasticsearch.
+3. Передать переменные окружения через систему управления секретами.
+4. Установить активный профиль `prod`.
+5. Убедиться, что Liquibase может подключиться к базе данных и выполнить миграции.
+
+### Переменные окружения
+
+В Production необходимо настроить:
+
+```env
+SPRING_PROFILES_ACTIVE=prod
+
+JWT_SECRET=production_base64_secret
+JWT_ISSUER=auth-service
+
+CATALOG_SERVER_PORT=8080
+
+CATALOG_DATABASE_URL=jdbc:postgresql://postgres-host:5432/catalog_db
+CATALOG_DATABASE_USERNAME=database_user
+CATALOG_DATABASE_PASSWORD=atabase_password
+
+POSTGRES_USER=username
+POSTGRES_PASSWORD=password
+
+ELASTICSEARCH_URI=http://elasticsearch-host:9200
+```
+
+---
