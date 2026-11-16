@@ -60,6 +60,20 @@ public class ProductService {
         return fallbackResults.stream().map(this::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public ProductResponse getProductCard(UUID productId, UUID sellerId, boolean admin) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+
+        if (!admin && product.getStatus() != ProductStatus.PUBLISHED) {
+            if (sellerId == null || !product.getSellerId().equals(sellerId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
+            }
+        }
+
+        return toResponse(product);
+    }
+
     @Transactional
     public ProductResponse createDraft(ProductDraftRequest request) {
         Category category = getCategory(request.categoryId());
