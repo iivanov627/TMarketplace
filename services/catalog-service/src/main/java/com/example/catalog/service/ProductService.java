@@ -46,7 +46,7 @@ public class ProductService {
         try {
             List<ProductSearchDocument> results = elasticsearchSearch.searchPublished(
                     normalizedQuery, categoryId, minPrice, maxPrice);
-            if (results != null) {
+            if (results != null && !results.isEmpty()) {
                 return results.stream().map(this::toResponse).toList();
             }
         } catch (ElasticsearchUnavailableException exception) {
@@ -109,6 +109,19 @@ public class ProductService {
         Product product = getProductForActor(productId, sellerId, admin);
         ensureDraftOrRejected(product);
         product.setStatus(ProductStatus.PENDING_MODERATION);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse approveProduct(UUID producId) {
+        Product product = productRepository.findById(producId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+
+        if (product.getStatus() != ProductStatus.PENDING_MODERATION) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only products pending moderation can be approved");
+        }
+
+        product.setStatus(ProductStatus.PUBLISHED);
         return saveAndUpdateSearchAlias(product);
     }
 
