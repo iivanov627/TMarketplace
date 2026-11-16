@@ -47,6 +47,17 @@ public class ProductController {
         return productService.getPublishedProducts(q, categoryId, minPrice, maxPrice);
     }
 
+    @GetMapping("/{productId}")
+    @Operation(summary = "Получить карточку товара по ID")
+    public ProductResponse getProductCard(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+        boolean admin = jwt != null && isAdmin(jwt);
+        UUID sellerId = (jwt != null && !admin) ? currentUserId(jwt) : null;
+
+        return productService.getProductCard(productId, sellerId, admin);
+    }
+
     @PostMapping("/drafts")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Создать черновик товара")
