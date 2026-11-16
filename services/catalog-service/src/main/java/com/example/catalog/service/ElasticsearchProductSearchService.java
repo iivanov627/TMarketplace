@@ -9,10 +9,12 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import com.example.catalog.entity.Product;
 import com.example.catalog.entity.ProductSearchDocument;
 import com.example.catalog.entity.ProductStatus;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -27,11 +29,22 @@ public class ElasticsearchProductSearchService {
     private final ElasticsearchClient client;
     private final String indexName;
 
+    private final AtomicBoolean indexInitialized = new AtomicBoolean(false);
+
     public ElasticsearchProductSearchService(
             ElasticsearchClient client,
             @Value("${catalog.search.index:products}") String indexName) {
         this.client = client;
         this.indexName = indexName;
+    }
+
+    @PostConstruct
+    public void init() {
+        try {
+            ensureIndex();
+        } catch (Exception e) {
+            log.warn("Failed to initialize Elasticsearch index on startup: {}", e.getMessage());
+        }
     }
 
     @CircuitBreaker(name = "elasticsearch", fallbackMethod = "fallbackSearch")
@@ -61,7 +74,7 @@ public class ElasticsearchProductSearchService {
         try {
             SearchResponse<ProductSearchDocument> response = client.search(s -> s
                     .index(indexName)
-                    .size(1000)
+                    .size(30)
                     .query(query), ProductSearchDocument.class);
             return response.hits().hits().stream()
                     .map(hit -> hit.source())
@@ -93,22 +106,30 @@ public class ElasticsearchProductSearchService {
     }
 
     private void ensureIndex() throws IOException {
-        if (client.indices().exists(e -> e.index(indexName)).value()) {
+        if (indexInitialized.get()) {
             return;
         }
 
-        CreateIndexRequest request = CreateIndexRequest.of(create -> create
-                .index(indexName)
-                .mappings(mapping -> mapping
-                        .properties("id", p -> p.keyword(k -> k))
-                        .properties("sellerId", p -> p.keyword(k -> k))
-                        .properties("categoryId", p -> p.keyword(k -> k))
-                        .properties("name", p -> p.text(t -> t))
-                        .properties("description", p -> p.text(t -> t))
-                        .properties("price", p -> p.double_(d -> d))
-                        .properties("stock", p -> p.integer(i -> i))
-                        .properties("status", p -> p.keyword(k -> k))
-                        .properties("createdAt", p -> p.date(d -> d))));
-        client.indices().create(request);
+        synchronized (this) {
+            if (indexInitialized.get()) return;
+
+            if (!client.indices().exists(e -> e.index(indexName)).value()) {
+                CreateIndexRequest request = CreateIndexRequest.of(create -> create
+                        .index(indexName)
+                        .mappings(mapping -> mapping
+                                .properties("id", p -> p.keyword(k -> k))
+                                .properties("sellerId", p -> p.keyword(k -> k))
+                                .properties("categoryId", p -> p.keyword(k -> k))
+                                .properties("name", p -> p.text(t -> t))
+                                .properties("description", p -> p.text(t -> t))
+                                .properties("price", p -> p.double_(d -> d))
+                                .properties("stock", p -> p.integer(i -> i))
+                                .properties("status", p -> p.keyword(k -> k))
+                                .properties("createdAt", p -> p.date(d -> d))));
+                client.indices().create(request);
+                log.info("Created Elasticsearch index: {}", indexName);
+            }
+            indexInitialized.set(true);
+        }
     }
 }
