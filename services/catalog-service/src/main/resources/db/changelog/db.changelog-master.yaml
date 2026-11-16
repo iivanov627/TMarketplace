@@ -3,7 +3,8 @@ databaseChangeLog:
       file: db/changelog/changes/000-archive-legacy-catalog.sql
       relativeToChangelogFile: false
   - include:
-      file: db/changelog/changes/001-catalog-schema.sql
+      file: db/changelog/changes/002-archive-product-search-alias.sql
       relativeToChangelogFile: false
   - include:
-      file: db/changelog/changes/002-statuses-add.sql
+      file: db/changelog/changes/001-catalog-schema.sql
+      relativeToChangelogFile: false
