@@ -99,6 +99,17 @@ public class ProductController {
         return productService.submitForModeration(productId, sellerId, admin);
     }
 
+    @PostMapping("/{productId}/approve")
+    @Operation(summary = "Одобрить товар")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse approveProduct(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID productId) {
+        boolean admin = isAdmin(jwt);
+        if (!admin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can approve products");
+        }
+        return productService.approveProduct(productId);
+    }
+
     @PostMapping("/{productId}/reject")
     @Operation(summary = "Отклонить товар")
     @SecurityRequirement(name = "bearerAuth")
