@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router';
 
+import { ROUTES } from '../shared/config/routes';
+
 import { CatalogPage } from '../pages/catalog';
 import { ProductPage } from '../pages/product';
 import { LoginPage } from '../pages/login';
@@ -22,41 +24,46 @@ import { AdminOrdersPage } from '../pages/admin/orders';
 import { AdminOrderPage } from '../pages/admin/order';
 import { AdminBonusesPage } from '../pages/admin/bonuses';
 
-
 import { NotFoundPage } from '../pages/not-found';
-
-import { Layout } from '../shared/ui/Layout';
+import { UiKitPage } from '../pages/ui-kit/UiKitPage';
 
 export function AppRouter() {
   return (
     <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/catalog" replace />} />
+      {/* Редирект с корня */}
+      <Route path="/" element={<Navigate to={ROUTES.CATALOG} replace />} />
 
-        <Route path="/catalog" element={<CatalogPage />} />
-        <Route path="/product/:id" element={<ProductPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+      {/* Публичные */}
+      <Route path={ROUTES.CATALOG} element={<CatalogPage />} />
+      <Route path={ROUTES.PRODUCT_PATTERN} element={<ProductPage />} />
+      <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+      <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
 
-        <Route path="/cart" element={<CartPage/>} />
-        <Route path="/order" element={<OrdersPage/>} />
-        <Route path="/profile" element={<ProfilePage/>} />
+      {/* Покупатель */}
+      <Route path={ROUTES.CART} element={<CartPage />} />
+      <Route path={ROUTES.ORDERS} element={<OrdersPage />} />
+      <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
 
-        <Route path="/seller/products" element={<SellerProductsPage />} />
-        <Route path="/seller/products/new" element={<SellerProductNewPage />} />
-        <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
-        <Route path="/seller/orders" element={<SellerOrdersPage />} />
-        <Route path="/seller/orders/:id" element={<SellerOrderPage />} />
+      {/* Продавец */}
+      <Route path={ROUTES.SELLER_PRODUCTS} element={<SellerProductsPage />} />
+      <Route path={ROUTES.SELLER_PRODUCT_NEW} element={<SellerProductNewPage />} />
+      <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
+      <Route path={ROUTES.SELLER_ORDERS} element={<SellerOrdersPage />} />
+      <Route path="/seller/orders/:id" element={<SellerOrderPage />} />
 
-        <Route path="/admin/products" element={<AdminProductsPage />} />
-        <Route path="/admin/products/new" element={<AdminProductNewPage />} />
-        <Route path="/admin/products/:id/edit" element={<AdminProductEditPage />} />
-        <Route path="/admin/orders" element={<AdminOrdersPage />} />
-        <Route path="/admin/orders/:id" element={<AdminOrderPage />} />
-        <Route path="/admin/bonuses" element={<AdminBonusesPage />} />
-      </Route>
+      {/* Админ */}
+      <Route path={ROUTES.ADMIN_PRODUCTS} element={<AdminProductsPage />} />
+      <Route path={ROUTES.ADMIN_PRODUCT_NEW} element={<AdminProductNewPage />} />
+      <Route path="/admin/products/:id/edit" element={<AdminProductEditPage />} />
+      <Route path={ROUTES.ADMIN_ORDERS} element={<AdminOrdersPage />} />
+      <Route path="/admin/orders/:id" element={<AdminOrderPage />} />
+      <Route path={ROUTES.ADMIN_BONUSES} element={<AdminBonusesPage />} />
 
-      <Route path="*" element={<NotFoundPage />} />
+      {/* UI-kit для разработки */}
+      <Route path="/ui-kit" element={<UiKitPage />} />
+
+      {/* 404 */}
+      <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
     </Routes>
   );
 }

@@ -1,42 +1,33 @@
-﻿import { EmptyState as MantineEmptyState, Button } from '@mantine/core';
+﻿import { Center, Stack, Text, ThemeIcon, Button } from '@mantine/core';
 import { IconMoodEmpty } from '@tabler/icons-react';
+import type { ReactNode } from 'react';
 
 interface EmptyStateProps {
   message?: string;
-  onReset?: () => void;
+  icon?: ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export function EmptyState({ message = 'Товаров нет', onReset }: EmptyStateProps) {
+export function EmptyState({
+  message = 'Здесь пока пусто',
+  icon,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) {
   return (
-    <MantineEmptyState
-      icon={<IconMoodEmpty size={48} stroke={1.5} />}
-      title="Пусто"
-      description={message}
-      size="md"
-      align="center"
-      withIndicatorBackground
-      styles={{
-        root: {
-          padding: '40px 20px',
-        },
-        title: {
-          color: '#000000',
-          fontSize: 18,
-          fontWeight: 600,
-        },
-        description: {
-          color: 'var(--mantine-color-dark-4)',
-          fontSize: 14,
-        },
-      }}
-    >
-      {onReset && (
-        <MantineEmptyState.Actions>
-          <Button variant="light" color="yellowBrand" size="sm" onClick={onReset}>
-            Сбросить фильтры
+    <Center py="xl">
+      <Stack align="center" gap="sm">
+        <ThemeIcon size={48} radius="xl" variant="light" color="gray">
+          {icon ?? <IconMoodEmpty size={28} />}
+        </ThemeIcon>
+        <Text c="dimmed" size="sm" ta="center">{message}</Text>
+        {onAction && actionLabel && (
+          <Button variant="light" color="yellowBrand" size="sm" onClick={onAction}>
+            {actionLabel}
           </Button>
-        </MantineEmptyState.Actions>
-      )}
-    </MantineEmptyState>
+        )}
+      </Stack>
+    </Center>
   );
 }
