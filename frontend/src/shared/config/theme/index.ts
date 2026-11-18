@@ -34,7 +34,9 @@ export const theme = createTheme({
       styles: {
         root: {
           fontWeight: 600,
+          color: '#000000',
         },
+        label: { color: '#000000' },
       },
     },
     TextInput: {

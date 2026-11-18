@@ -21,3 +21,4 @@ export { SelectableCard } from './SelectableCard';
 export { InlineSelect } from './InlineSelect';
 export { CircleIconButton } from './CircleIconButton';
 export { BottomActionBar} from './BottomActionBar';
+export { AppLink } from './AppLink';
