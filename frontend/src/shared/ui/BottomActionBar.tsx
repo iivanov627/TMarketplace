@@ -1,4 +1,4 @@
-import { Box, Button, Group, Text } from '@mantine/core';
+import { Box, Button, Group } from '@mantine/core';
 import type { ReactNode } from 'react';
 
 interface BottomActionBarProps {

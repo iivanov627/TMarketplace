@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
 
 import { useViewer } from '../../../entities/session';
 import { TabBar, TabBarItem } from '../../../shared/ui';

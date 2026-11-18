@@ -1,7 +1,4 @@
 ﻿import { Group } from "@mantine/core";
-import { Link } from "react-router";
-
-import { ROUTES } from "../../../shared/config/routes";
 import { Logo } from "../../../shared/ui";
 import { AccountSlot } from "./AccountSlot";
 

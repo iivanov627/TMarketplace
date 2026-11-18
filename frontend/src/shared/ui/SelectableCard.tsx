@@ -1,4 +1,4 @@
-import { Radio, Card, Group, Text } from '@mantine/core';
+import { Radio, Group, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 
 interface SelectableCardProps {

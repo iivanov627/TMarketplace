@@ -1,4 +1,4 @@
-import { createTheme, rem, type MantineColorsTuple } from '@mantine/core';
+import { createTheme, type MantineColorsTuple } from '@mantine/core';
 
 const yellowBrand: MantineColorsTuple = [
   "#fffce1",
