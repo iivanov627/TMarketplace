@@ -23,7 +23,7 @@ export function EmptyState({
         </ThemeIcon>
         <Text c="dimmed" size="sm" ta="center">{message}</Text>
         {onAction && actionLabel && (
-          <Button variant="light" color="yellowBrand" size="sm" onClick={onAction}>
+          <Button color="yellowBrand" size="sm" onClick={onAction}>
             {actionLabel}
           </Button>
         )}

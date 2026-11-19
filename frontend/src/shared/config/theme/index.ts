@@ -1,4 +1,4 @@
-import { createTheme, type MantineColorsTuple } from '@mantine/core';
+import { createTheme, type CSSVariablesResolver, type MantineColorsTuple } from '@mantine/core';
 
 const yellowBrand: MantineColorsTuple = [
   "#fffce1",
@@ -16,6 +16,7 @@ const yellowBrand: MantineColorsTuple = [
 export const theme = createTheme({
 
   primaryColor: 'yellowBrand',
+  autoContrast: true,
   colors: { yellowBrand },
   fontFamily: 'Inter, sans-serif',
   headings: { fontFamily: 'Inter, sans-serif' },
@@ -119,4 +120,12 @@ export const theme = createTheme({
       },
     },
   },
+});
+
+export const cssVariablesResolver: CSSVariablesResolver = (currentTheme) => ({
+  variables: {},
+  light: {
+    '--mantine-color-body': currentTheme.other.backgroundColor,
+  },
+  dark: {},
 });
