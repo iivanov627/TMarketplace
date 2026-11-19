@@ -2,7 +2,7 @@ import { apiClient, type Page } from '../../../shared/api';
 import { MOCK_PRODUCTS } from '../model/mockProducts';
 import type { Product, ProductListParams } from '../model/types';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 export const productApi = {
   async list(params: ProductListParams, signal?: AbortSignal): Promise<Page<Product>> {
