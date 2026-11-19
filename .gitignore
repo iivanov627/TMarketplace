@@ -10,6 +10,7 @@ application-secret.yaml
 # Java / Spring Boot
 target/
 build/
+.m2/
 .gradle/
 *.class
 *.jar
