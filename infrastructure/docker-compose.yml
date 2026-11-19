@@ -6,7 +6,7 @@ services:
       context: ../services/api-gateway
       dockerfile: Dockerfile
     environment:
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the project root .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in infrastructure/.env}
       JWT_ISSUER: ${JWT_ISSUER:-auth-service}
       AUTH_SERVICE_URL: http://auth-service:8081
       CATALOG_SERVICE_URL: http://catalog-service:8082
@@ -23,14 +23,14 @@ services:
       context: ../services/auth-service
       dockerfile: Dockerfile
     environment:
-      SERVER_PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/auth_db
-      SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER:-auth_user}
-      SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD:-local_auth_password}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the project root .env}
+      AUTH_SERVER_PORT: ${AUTH_SERVER_PORT:-8081}
+      AUTH_DATABASE_URL: ${AUTH_DATABASE_URL:-jdbc:postgresql://auth-db:5432/auth_db}
+      AUTH_DATABASE_USERNAME: ${AUTH_DB_USER:-auth_user}
+      AUTH_DATABASE_PASSWORD: ${AUTH_DB_PASSWORD:-local_auth_password}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in infrastructure/.env}
       JWT_ISSUER: ${JWT_ISSUER:-auth-service}
       JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-900000}
-      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-2592000000}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
     depends_on:
       auth-db:
         condition: service_healthy
@@ -42,12 +42,25 @@ services:
       context: ../services/catalog-service
       dockerfile: Dockerfile
     environment:
-      SERVER_PORT: 8082
+      CATALOG_SERVER_PORT: ${CATALOG_SERVER_PORT:-8082}
+      CATALOG_DATABASE_URL: ${CATALOG_DATABASE_URL:-jdbc:postgresql://catalog-db:5432/catalog_db}
+      CATALOG_DATABASE_USERNAME: ${CATALOG_DATABASE_USERNAME:-catalog_user}
+      CATALOG_DATABASE_PASSWORD: ${CATALOG_DATABASE_PASSWORD:-local_catalog_password}
+      ELASTICSEARCH_URI: ${ELASTICSEARCH_URI:-http://elasticsearch:9200}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in infrastructure/.env}
+      JWT_ISSUER: ${JWT_ISSUER:-auth-service}
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     networks:
       - marketplace
 
   auth-db:
     image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5443:5432"
     environment:
       POSTGRES_DB: auth_db
       POSTGRES_USER: ${AUTH_DB_USER:-auth_user}
@@ -63,6 +76,8 @@ services:
 
   catalog-db:
     image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5444:5432"
     environment:
       POSTGRES_DB: catalog_db
       POSTGRES_USER: ${CATALOG_DB_USER:-catalog_user}
@@ -73,6 +88,23 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
+      retries: 20
+    networks: [marketplace]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
       retries: 20
     networks: [marketplace]
 
@@ -154,6 +186,7 @@ services:
 volumes:
   auth-db-data:
   catalog-db-data:
+  elasticsearch-data:
   user-db-data:
   cart-db-data:
   order-db-data:
