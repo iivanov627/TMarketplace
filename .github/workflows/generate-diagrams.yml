@@ -1,0 +1,78 @@
+
+name: Generate Architecture Diagrams
+
+on:
+  push:
+    paths:
+      - 'docs/architecture/**.puml'
+      - 'docs/architecture/**.mmd'
+      - '.github/workflows/generate-diagrams.yml'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Получаем репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Java для PlantUML
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 3. Устанавливаем PlantUML
+      - name: Install PlantUML
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y plantuml graphviz
+
+      # 4. Устанавливаем Node.js для Mermaid CLI
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 5. Устанавливаем Mermaid CLI
+      - name: Install Mermaid CLI
+        run: npm install -g @mermaid-js/mermaid-cli@11.4.2
+
+      # 6. Генерируем все C4-диаграммы
+      - name: Generate PlantUML diagrams
+        run: |
+          find docs/architecture -name '*.puml' -print0 |
+          while IFS= read -r -d '' file; do
+            plantuml -tsvg "$file"
+          done
+
+      # 7. Генерируем все Mermaid-диаграммы
+      - name: Generate Mermaid diagrams
+        run: |
+          find docs/architecture -name '*.mmd' -print0 |
+          while IFS= read -r -d '' file; do
+            output="${file%.mmd}.svg"
+            mmdc -i "$file" -o "$output" -b transparent
+          done
+
+      # 8. Сохраняем SVG в репозиторий
+      - name: Commit generated diagrams
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add docs/architecture/*.svg
+
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: regenerate architecture diagrams"
+            git push
+          else
+            echo "No diagram changes"
+          fi

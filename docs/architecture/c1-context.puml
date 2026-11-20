@@ -1,0 +1,25 @@
+
+@startuml c1-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C1 — System Context Diagram
+
+Person(buyer, "Buyer", "Самостоятельная учётная сущность покупателя")
+Person(seller, "Seller", "Самостоятельная учётная сущность продавца")
+Person(admin, "Admin", "Самостоятельная учётная сущность администратора")
+
+System(marketplace, "Marketplace", "Маркетплейс: каталог, корзина, заказы, бонусы и управление товарами")
+
+System_Ext(tbank, "Т-Банк ID", "Внешняя система авторизации")
+System_Ext(mail, "Mail.ru SMTP", "Email-уведомления")
+System_Ext(telegram, "Telegram Bot API", "Уведомления через Telegram")
+
+Rel(buyer, marketplace, "Покупает товары, управляет корзиной и заказами")
+Rel(seller, marketplace, "Создаёт товары, обрабатывает заказы")
+Rel(admin, marketplace, "Модерирует товары, управляет заказами и бонусами")
+
+Rel(marketplace, tbank, "Авторизация")
+Rel(marketplace, mail, "Отправка email")
+Rel(marketplace, telegram, "Отправка уведомлений")
+
+@enduml

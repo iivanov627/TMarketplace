@@ -1,0 +1,81 @@
+
+@startuml c2-containers
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C2 — Marketplace Container Diagram
+
+Person(buyer, "Buyer")
+Person(seller, "Seller")
+Person(admin, "Admin")
+
+System_Boundary(mp, "Marketplace") {
+
+    Container(browser, "Browser", "Web Browser", "Интерфейс пользователей")
+    Container(nginx, "Nginx", "Reverse Proxy", "Входная точка и проксирование")
+
+    Container(frontend, "Frontend", "Web Application", "Пользовательский интерфейс")
+    Container(gateway, "API Gateway", "Spring Boot", "JWT validation, routing")
+
+    Container(auth, "auth-service", "Spring Boot", "Аутентификация и JWT")
+    Container(user, "user-service", "Spring Boot", "Профили и данные пользователей")
+    Container(catalog, "catalog-service", "Spring Boot", "Каталог, товары, модерация")
+    Container(cart, "cart-service", "Spring Boot", "Корзины покупателей")
+    Container(order, "order-service", "Spring Boot", "Заказы и их статусы")
+    Container(bonus, "bonus-service", "Spring Boot", "Бонусные счета и операции")
+    Container(notify, "notification-service", "Spring Boot", "Уведомления")
+
+    ContainerDb(postgres, "PostgreSQL", "Relational Database", "Данные микросервисов")
+    ContainerQueue(kafka, "Apache Kafka", "Event Broker", "Асинхронный обмен сообщениями")
+    ContainerDb(s3, "S3 Storage", "Object Storage", "Фотографии товаров")
+    ContainerDb(es, "Elasticsearch", "Search Engine", "Поисковый индекс каталога")
+}
+
+System_Ext(tbank, "Т-Банк ID", "Внешняя авторизация")
+System_Ext(mail, "Mail.ru SMTP", "Email")
+System_Ext(telegram, "Telegram Bot API", "Уведомления")
+
+Rel(buyer, browser, "Использует")
+Rel(seller, browser, "Использует")
+Rel(admin, browser, "Использует")
+
+Rel(browser, nginx, "HTTPS")
+Rel(nginx, frontend, "Отдаёт статику")
+Rel(nginx, gateway, "Проксирует API")
+Rel(frontend, gateway, "REST/HTTPS")
+
+Rel(gateway, auth, "REST")
+Rel(gateway, user, "REST")
+Rel(gateway, catalog, "REST")
+Rel(gateway, cart, "REST")
+Rel(gateway, order, "REST")
+Rel(gateway, bonus, "REST")
+
+Rel(auth, postgres, "SQL")
+Rel(user, postgres, "SQL")
+Rel(catalog, postgres, "SQL")
+Rel(cart, postgres, "SQL")
+Rel(order, postgres, "SQL")
+Rel(bonus, postgres, "SQL")
+
+Rel(catalog, s3, "Загрузка изображений")
+Rel(catalog, es, "Обновление поискового индекса")
+
+Rel(auth, tbank, "Авторизация")
+Rel(notify, mail, "SMTP")
+Rel(notify, telegram, "HTTPS")
+
+Rel(auth, kafka, "Публикует auth events")
+Rel(user, kafka, "Публикует user events")
+Rel(catalog, kafka, "Публикует product events")
+Rel(cart, kafka, "Публикует cart events")
+Rel(order, kafka, "Публикует order events")
+Rel(bonus, kafka, "Публикует bonus events")
+
+Rel(kafka, user, "Auth events")
+Rel(kafka, cart, "Product events")
+Rel(kafka, order, "Bonus/payment events")
+Rel(kafka, bonus, "Order events")
+Rel(kafka, notify, "Доменные события")
+Rel(kafka, es, "Product events")
+
+@enduml

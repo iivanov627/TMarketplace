@@ -1,0 +1,84 @@
+
+@startuml c4-catalog-code
+title C4 — catalog-service Code Structure
+
+package "catalog-service" {
+
+    package "controller" {
+        class ProductController {
+            +createProduct(request)
+            +updateProduct(id, request)
+            +submitForModeration(id)
+            +getProduct(id)
+        }
+    }
+
+    package "service" {
+        class ProductService {
+            +createProduct(request)
+            +updateProduct(id, request)
+            +archiveProduct(id)
+        }
+
+        class ModerationService {
+            +approveProduct(id)
+            +rejectProduct(id)
+        }
+
+        class InventoryService {
+            +updateStock(id, quantity)
+            +checkAvailability(id)
+        }
+    }
+
+    package "domain" {
+        class Product {
+            -UUID id
+            -UUID sellerId
+            -String name
+            -BigDecimal price
+            -ProductStatus status
+            -Integer stock
+        }
+
+        enum ProductStatus {
+            DRAFT
+            MODERATION
+            LISTED
+            HIDDEN
+            DELETED
+        }
+    }
+
+    package "repository" {
+        interface ProductRepository {
+            +save(product)
+            +findById(id)
+            +findBySellerId(id)
+        }
+    }
+
+    package "messaging" {
+        class OutboxEvent {
+            -UUID eventId
+            -String eventType
+            -String payload
+            -Instant createdAt
+        }
+
+        class OutboxPublisher {
+            +publishPendingEvents()
+        }
+    }
+}
+
+ProductController --> ProductService
+ProductService --> ProductRepository
+ProductService --> ModerationService
+ProductService --> InventoryService
+ProductService --> Product
+ProductRepository --> Product
+ProductService --> OutboxEvent
+OutboxPublisher --> OutboxEvent
+
+@enduml

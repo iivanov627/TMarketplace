@@ -1,0 +1,51 @@
+
+@startuml c3-catalog
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C3 — catalog-service Components
+
+Container_Boundary(catalog, "catalog-service") {
+
+    Component(controller, "ProductController", "REST Controller",
+        "Обработка HTTP-запросов каталога")
+
+    Component(service, "ProductService", "Application Service",
+        "Создание, редактирование и управление товарами")
+
+    Component(moderation, "ModerationService", "Domain Service",
+        "Одобрение и отклонение товаров")
+
+    Component(stock, "InventoryService", "Domain Service",
+        "Управление остатками и доступностью")
+
+    Component(repository, "ProductRepository", "Repository",
+        "Работа с данными товаров")
+
+    Component(outbox, "OutboxPublisher", "Infrastructure",
+        "Публикация доменных событий через Outbox")
+
+    Component(storage, "ImageStorageAdapter", "Infrastructure",
+        "Загрузка фотографий в S3")
+
+    Component(search, "SearchIndexerPublisher", "Kafka Producer",
+        "Публикация событий для Elasticsearch")
+}
+
+ContainerDb(db, "PostgreSQL", "Database")
+ContainerQueue(kafka, "Kafka", "Message Broker")
+ContainerDb(s3, "S3 Storage", "Object Storage")
+ContainerDb(es, "Elasticsearch", "Search Engine")
+
+Rel(controller, service, "Вызывает")
+Rel(service, moderation, "Управление модерацией")
+Rel(service, stock, "Управление остатками")
+Rel(service, repository, "Чтение/запись")
+Rel(service, storage, "Работа с изображениями")
+Rel(repository, db, "SQL")
+Rel(service, outbox, "Записывает события в транзакции")
+Rel(outbox, kafka, "Публикует product.events")
+Rel(kafka, search, "События каталога")
+Rel(search, es, "Обновляет индекс")
+Rel(storage, s3, "S3 API")
+
+@enduml
