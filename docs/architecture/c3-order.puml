@@ -1,59 +1,45 @@
-
 @startuml c3-order
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-title C3 — order-service Components
+title C3 - order-service Components
 
 Container_Boundary(order, "order-service") {
-
-    Component(controller, "OrderController", "REST Controller",
-        "Создание заказов и получение истории")
-
-    Component(service, "OrderService", "Application Service",
-        "Управление жизненным циклом заказа")
-
-    Component(factory, "OrderFactory", "Domain Component",
-        "Формирование заказа и OrderItems")
-
-    Component(status, "OrderStatusService", "Domain Service",
-        "Проверка допустимых переходов статусов")
-
-    Component(saga, "OrderSagaOrchestrator", "Application Component",
-        "Координация оплаты и списания бонусов")
-
-    Component(payment, "PaymentAdapter", "Integration Adapter",
-        "Интеграция с демо-оплатой")
-
-    Component(repository, "OrderRepository", "Repository",
-        "Хранение заказов")
-
-    Component(consumer, "OrderEventConsumer", "Kafka Consumer",
-        "Обработка результатов оплаты и бонусных операций")
-
-    Component(producer, "OrderEventPublisher", "Kafka Producer",
-        "Публикация событий заказов через Outbox")
+    Component(controller, "OrderController", "REST Controller", "Создание заказа, история и карточка заказа")
+    Component(service, "OrderService", "Application Service", "Создание заказа, проверка прав и управление жизненным циклом")
+    Component(factory, "OrderFactory", "Domain Component", "Формирование Order и OrderItems с фиксацией цены и продавца")
+    Component(status, "OrderStatusService", "Domain Service", "Проверка допустимых переходов статусов")
+    Component(saga, "OrderSagaOrchestrator", "Application Component", "Оркестрация создания заказа и бонусной операции с компенсацией при ошибке")
+    Component(repository, "OrderRepository", "Repository", "Хранение заказов и позиций")
+    Component(cartClient, "CartClient", "REST Client", "Получение и очистка корзины")
+    Component(catalogClient, "CatalogClient", "REST Client", "Проверка, что товары не скрыты и не архивированы")
+    Component(commandPublisher, "BonusCommandPublisher", "Kafka Producer", "Публикация команд списания и возврата бонусов")
+    Component(bonusConsumer, "BonusEventConsumer", "Kafka Consumer", "Обработка результатов бонусных операций")
+    Component(outbox, "OrderOutboxPublisher", "Infrastructure", "Публикация order.events через Transactional Outbox")
 }
 
-ContainerDb(db, "PostgreSQL", "Database")
-ContainerQueue(kafka, "Kafka", "Message Broker")
-Container(bonus, "bonus-service", "Spring Boot", "Бонусные операции")
-Container(cart, "cart-service", "Spring Boot", "Корзина")
-Container(catalog, "catalog-service", "Spring Boot", "Каталог")
+ContainerDb(db, "PostgreSQL", "Database", "Данные заказов")
+ContainerQueue(kafka, "Kafka", "Event Broker", "Топики bonus.commands, bonus.events и order.events")
+Container(bonus, "bonus-service", "Spring Boot", "Бонусные счета и операции")
+Container(cart, "cart-service", "Spring Boot", "Корзина покупателя")
+Container(catalog, "catalog-service", "Spring Boot", "Каталог и доступность товаров")
 
 Rel(controller, service, "Вызывает")
-Rel(service, factory, "Создаёт заказ")
+Rel(service, factory, "Формирует заказ")
 Rel(service, status, "Проверяет переходы")
 Rel(service, repository, "Чтение/запись")
-Rel(service, saga, "Запускает процесс оформления")
-Rel(saga, payment, "Инициирует оплату")
-Rel(saga, producer, "Публикует команды")
+Rel(service, saga, "Запускает оформление")
+Rel(saga, cartClient, "Получает корзину и очищает после успешного оформления")
+Rel(saga, catalogClient, "Проверяет доступность карточек товаров")
+Rel(cartClient, cart, "REST")
+Rel(catalogClient, catalog, "REST")
+Rel(saga, commandPublisher, "Инициирует списание/возврат бонусов")
+Rel(commandPublisher, kafka, "Публикует bonus.commands")
+Rel(kafka, bonus, "Передаёт bonus.commands")
+Rel(bonus, kafka, "Публикует bonus.events")
+Rel(kafka, bonusConsumer, "Передаёт bonus.events")
+Rel(bonusConsumer, saga, "Передаёт результат операции")
 Rel(repository, db, "SQL")
-Rel(consumer, saga, "Передаёт результаты")
-Rel(producer, kafka, "Публикует order.events")
-Rel(kafka, consumer, "События bonus/payment")
-Rel(saga, cart, "REST: получить/очистить корзину")
-Rel(saga, catalog, "REST: проверить товары")
-
-Rel(kafka, bonus, "Bonus commands")
+Rel(service, outbox, "Записывает order.events в транзакции с заказом")
+Rel(outbox, kafka, "Публикует order.events")
 
 @enduml

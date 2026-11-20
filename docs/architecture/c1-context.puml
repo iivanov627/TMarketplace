@@ -1,25 +1,16 @@
-
 @startuml c1-context
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
-title C1 — System Context Diagram
+title C1 - Marketplace System Context
 
-Person(buyer, "Buyer", "Самостоятельная учётная сущность покупателя")
-Person(seller, "Seller", "Самостоятельная учётная сущность продавца")
-Person(admin, "Admin", "Самостоятельная учётная сущность администратора")
+Person(buyer, "Buyer", "Отдельная сущность покупателя")
+Person(seller, "Seller", "Отдельная сущность продавца")
+Person(admin, "Admin", "Отдельная сущность администратора")
 
-System(marketplace, "Marketplace", "Маркетплейс: каталог, корзина, заказы, бонусы и управление товарами")
+System(marketplace, "Marketplace", "Каталог, корзина, заказы, оплата бонусами и управление товарами")
 
-System_Ext(tbank, "Т-Банк ID", "Внешняя система авторизации")
-System_Ext(mail, "Mail.ru SMTP", "Email-уведомления")
-System_Ext(telegram, "Telegram Bot API", "Уведомления через Telegram")
-
-Rel(buyer, marketplace, "Покупает товары, управляет корзиной и заказами")
-Rel(seller, marketplace, "Создаёт товары, обрабатывает заказы")
-Rel(admin, marketplace, "Модерирует товары, управляет заказами и бонусами")
-
-Rel(marketplace, tbank, "Авторизация")
-Rel(marketplace, mail, "Отправка email")
-Rel(marketplace, telegram, "Отправка уведомлений")
+Rel(buyer, marketplace, "Просматривает каталог, оформляет и отслеживает заказы")
+Rel(seller, marketplace, "Создаёт товары и обрабатывает заказы со своими товарами")
+Rel(admin, marketplace, "Управляет товарами, заказами и бонусными начислениями")
 
 @enduml
