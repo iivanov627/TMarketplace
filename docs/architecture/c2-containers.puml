@@ -2,30 +2,29 @@
 @startuml c2-containers
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-title C2 — Marketplace Container Diagram
+title C2 - Marketplace Container Diagram
 
-Person(buyer, "Buyer")
-Person(seller, "Seller")
-Person(admin, "Admin")
+Person(buyer, "Buyer", "Покупатель")
+Person(seller, "Seller", "Продавец")
+Person(admin, "Admin", "Администратор")
 
 System_Boundary(mp, "Marketplace") {
 
     Container(browser, "Browser", "Web Browser", "Интерфейс пользователей")
     Container(nginx, "Nginx", "Reverse Proxy", "Входная точка и проксирование")
-
     Container(frontend, "Frontend", "Web Application", "Пользовательский интерфейс")
     Container(gateway, "API Gateway", "Spring Boot", "JWT validation, routing")
 
     Container(auth, "auth-service", "Spring Boot", "Аутентификация и JWT")
-    Container(user, "user-service", "Spring Boot", "Профили и данные пользователей")
-    Container(catalog, "catalog-service", "Spring Boot", "Каталог, товары, модерация")
+    Container(user, "user-service", "Spring Boot", "Профили пользователей")
+    Container(catalog, "catalog-service", "Spring Boot", "Каталог и модерация товаров")
     Container(cart, "cart-service", "Spring Boot", "Корзины покупателей")
-    Container(order, "order-service", "Spring Boot", "Заказы и их статусы")
+    Container(order, "order-service", "Spring Boot", "Заказы и статусы")
     Container(bonus, "bonus-service", "Spring Boot", "Бонусные счета и операции")
     Container(notify, "notification-service", "Spring Boot", "Уведомления")
 
-    ContainerDb(postgres, "PostgreSQL", "Relational Database", "Данные микросервисов")
-    ContainerQueue(kafka, "Apache Kafka", "Event Broker", "Асинхронный обмен сообщениями")
+    ContainerDb(postgres, "PostgreSQL", "Relational Database", "Хранение данных сервисов")
+    Container(kafka, "Apache Kafka", "Message Broker", "Асинхронный обмен сообщениями")
     ContainerDb(s3, "S3 Storage", "Object Storage", "Фотографии товаров")
     ContainerDb(es, "Elasticsearch", "Search Engine", "Поисковый индекс каталога")
 }
@@ -39,7 +38,7 @@ Rel(seller, browser, "Использует")
 Rel(admin, browser, "Использует")
 
 Rel(browser, nginx, "HTTPS")
-Rel(nginx, frontend, "Отдаёт статику")
+Rel(nginx, frontend, "Отдаёт frontend")
 Rel(nginx, gateway, "Проксирует API")
 Rel(frontend, gateway, "REST/HTTPS")
 
@@ -73,9 +72,8 @@ Rel(bonus, kafka, "Публикует bonus events")
 
 Rel(kafka, user, "Auth events")
 Rel(kafka, cart, "Product events")
-Rel(kafka, order, "Bonus/payment events")
+Rel(kafka, order, "Bonus events")
 Rel(kafka, bonus, "Order events")
 Rel(kafka, notify, "Доменные события")
-Rel(kafka, es, "Product events")
 
 @enduml
