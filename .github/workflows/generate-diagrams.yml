@@ -63,10 +63,11 @@ jobs:
       - name: Generate Mermaid diagrams
         run: |
           find docs/architecture -name '*.mmd' -print0 |
-          while IFS= read -r -d '' file; do
-            output="${file%.mmd}.svg"
-            mmdc -i "$file" -o "$output" -b transparent
-          done
+            while IFS= read -r -d '' file; do
+              output="${file%.mmd}.svg"
+              echo "Generating $file -> $output"
+              mmdc -i "$file" -o "$output" -p puppeteer-config.json
+            done
 
       # 8. Сохраняем SVG в репозиторий
       - name: Commit generated diagrams
