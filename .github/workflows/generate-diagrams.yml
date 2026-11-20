@@ -56,7 +56,7 @@ jobs:
         run: |
           find docs/architecture -name '*.puml' -print0 |
           while IFS= read -r -d '' file; do
-            plantuml -tsvg "$file"
+            java -jar plantuml.jar -tsvg "$file"
           done
 
       # 7. Генерируем все Mermaid-диаграммы
