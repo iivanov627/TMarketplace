@@ -15,6 +15,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -48,8 +52,13 @@ public class ElasticsearchProductSearchService {
     }
 
     @CircuitBreaker(name = "elasticsearch", fallbackMethod = "fallbackSearch")
-    public List<ProductSearchDocument> searchPublished(
-            String text, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice) {
+    public Page<ProductSearchDocument> searchPublished(
+            String text,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Pageable pageable
+    ) {
         Query query = Query.of(q -> q.bool(bool -> {
             if (text == null || text.isBlank()) {
                 bool.must(m -> m.matchAll(matchAll -> matchAll));
@@ -73,23 +82,41 @@ public class ElasticsearchProductSearchService {
 
         try {
             SearchResponse<ProductSearchDocument> response = client.search(s -> s
-                    .index(indexName)
-                    .size(30)
-                    .query(query), ProductSearchDocument.class);
-            return response.hits().hits().stream()
+                            .index(indexName)
+                            .from(Math.toIntExact(pageable.getOffset()))
+                            .size(pageable.getPageSize())
+                            .trackTotalHits(t -> t.enabled(true))
+                            .sort(sort -> sort.field(f -> f
+                                    .field("createdAt")
+                                    .order(SortOrder.Desc)))
+                            .query(query),
+                    ProductSearchDocument.class);
+
+            List<ProductSearchDocument> content = response.hits().hits().stream()
                     .map(hit -> hit.source())
                     .filter(Objects::nonNull)
                     .toList();
+
+            long total = response.hits().total() != null
+                    ? response.hits().total().value()
+                    : content.size();
+
+            return new PageImpl<>(content, pageable, total);
+
         } catch (IOException | RuntimeException exception) {
             throw new ElasticsearchUnavailableException(exception);
         }
     }
 
-    public List<ProductSearchDocument> fallbackSearch(
-            String text, UUID categoryId, BigDecimal minPrice, BigDecimal maxPrice, Throwable t) {
-
-        log.warn("Elasticsearch CircuitBreaker is OPEN. Reason: {}", t.getMessage());
-
+    public Page<ProductSearchDocument> fallbackSearch(
+            String text,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Pageable pageable,
+            Throwable t
+    ) {
+        log.warn("Elasticsearch is unavailable", t);
         throw new ElasticsearchUnavailableException(t);
     }
 
