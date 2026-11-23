@@ -20,6 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -69,8 +72,17 @@ class ProductControllerTest {
         Product draft = products.save(product(category, "Черновик", ProductStatus.DRAFT));
         searchAliases.save(ProductSearchAlias.from(publishedProduct));
         searchAliases.save(ProductSearchAlias.from(draft));
-        when(elasticsearchSearch.searchPublished(null, null, null, null))
-                .thenReturn(List.of(ProductSearchDocument.from(publishedProduct)));
+        when(elasticsearchSearch.searchPublished(
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        )).thenReturn(new PageImpl<>(
+                List.of(ProductSearchDocument.from(publishedProduct)),
+                PageRequest.of(0, 20),
+                1
+        ));
     }
 
     @Test
@@ -84,8 +96,15 @@ class ProductControllerTest {
 
     @Test
     void fallsBackToSqlAliasWhenElasticsearchIsUnavailable() throws Exception {
-        when(elasticsearchSearch.searchPublished("Опубликован", null, null, null))
-                .thenThrow(new ElasticsearchUnavailableException(new IOException("connection refused")));
+        when(elasticsearchSearch.searchPublished(
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        )).thenThrow(new ElasticsearchUnavailableException(
+                new IOException("connection refused")
+        ));
 
         mockMvc.perform(get("/api/products").param("q", "Опубликован"))
                 .andExpect(status().isOk())
