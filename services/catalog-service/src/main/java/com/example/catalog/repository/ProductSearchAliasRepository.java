@@ -46,4 +46,7 @@ public interface ProductSearchAliasRepository extends JpaRepository<ProductSearc
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("query") String query,
             Pageable pageable);
+
+    void deleteByProductId(UUID productId);
+
 }
