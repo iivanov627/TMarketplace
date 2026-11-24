@@ -64,7 +64,7 @@ public class Product {
     private ProductStatus status;
 
     @Column(name = "created_at", nullable = false)
-    private String createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
@@ -80,7 +80,7 @@ public class Product {
     @Column(columnDefinition = "jsonb")
     private JsonNode attributes;
 
-    @Column(name = "archivedAt")
+    @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
     public BigDecimal getPrice() {
