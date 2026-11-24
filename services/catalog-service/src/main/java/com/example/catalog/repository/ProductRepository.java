@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +30,11 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             @Param("categoryId") UUID categoryId,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice);
+
+    List<Product> findAllByStatusAndArchivedAtBefore(
+            ProductStatus status,
+            LocalDateTime archivedAt
+    );
 
     Optional<Product> findByIdAndSellerId(UUID id, UUID sellerId);
 }
