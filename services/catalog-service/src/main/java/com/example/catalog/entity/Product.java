@@ -64,7 +64,7 @@ public class Product {
     private ProductStatus status;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private String createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
