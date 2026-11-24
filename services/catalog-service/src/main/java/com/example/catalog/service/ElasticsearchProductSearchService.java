@@ -14,7 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -118,6 +120,17 @@ public class ElasticsearchProductSearchService {
     ) {
         log.warn("Elasticsearch is unavailable", t);
         throw new ElasticsearchUnavailableException(t);
+    }
+
+    public void delete(UUID productId) {
+        try {
+            client.delete(d -> d
+                    .index(indexName)
+                    .id(productId.toString())
+            );
+        } catch (IOException | RuntimeException exception) {
+            throw new ElasticsearchUnavailableException(exception);
+        }
     }
 
     public void index(Product product) {
