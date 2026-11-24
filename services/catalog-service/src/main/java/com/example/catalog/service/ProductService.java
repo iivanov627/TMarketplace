@@ -24,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 
+import java.time.LocalDateTime;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -165,6 +167,20 @@ public class ProductService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only products pending moderation can be approved");
         }
 
+        product.setStatus(ProductStatus.APPROVED);
+        return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public ProductResponse publishProduct(UUID productId, UUID sellerId, boolean admin) {
+        Product product = getProductForActor(productId, sellerId, admin);
+
+        if (product.getStatus() != ProductStatus.APPROVED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Only approved products can be published"
+            );
+        }
+
         product.setStatus(ProductStatus.PUBLISHED);
         return saveAndUpdateSearchAlias(product);
     }
@@ -215,6 +231,8 @@ public class ProductService {
         }
 
         product.setStatus(ProductStatus.ARCHIVED);
+        product.setArchivedAt(LocalDateTime.now());
+
         return saveAndUpdateSearchAlias(product);
     }
 
@@ -227,7 +245,32 @@ public class ProductService {
         }
 
         product.setStatus(ProductStatus.DRAFT);
+        product.setArchivedAt(null);
+
         return saveAndUpdateSearchAlias(product);
+    }
+
+    @Transactional
+    public void deleteExpiredArchivedProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Product not found"
+                ));
+
+        LocalDateTime expirationDate = LocalDateTime.now().minusDays(30);
+
+        if (product.getStatus() != ProductStatus.ARCHIVED
+                || product.getArchivedAt() == null
+                || product.getArchivedAt().isAfter(expirationDate)) {
+            return;
+        }
+
+        searchAliases.deleteByProductId(productId);
+        elasticsearchSearch.delete(productId);
+        productRepository.delete(product);
+
+        log.info("Product permanently deleted after 30 days in archive: {}", productId);
     }
 
     @Transactional
