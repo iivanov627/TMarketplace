@@ -155,6 +155,19 @@ public class ProductController {
         return productService.rejectProduct(productId);
     }
 
+    @PostMapping("/{productId}/publish")
+    @Operation(summary = "Опубликовать товар")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse publishProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+
+        return productService.publishProduct(productId, sellerId, admin);
+    }
+
     @PatchMapping("/{productId}/archive")
     @Operation(summary = "Отправить товар в архив")
     @SecurityRequirement(name = "bearerAuth")
