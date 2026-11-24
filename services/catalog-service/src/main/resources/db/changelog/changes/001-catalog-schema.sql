@@ -20,7 +20,8 @@ values ('00000000-0000-0000-0000-000000000001', 'DRAFT', 'Draft'),
        ('00000000-0000-0000-0000-000000000004', 'REJECTED', 'Rejected'),
        ('00000000-0000-0000-0000-000000000005', 'ARCHIVED', 'Archived'),
        ('00000000-0000-0000-0000-000000000006', 'HIDDEN', 'Hidden'),
-       ('00000000-0000-0000-0000-000000000007', 'DELETED', 'Deleted');
+       ('00000000-0000-0000-0000-000000000007', 'DELETED', 'Deleted'),
+       ('00000000-0000-0000-0000-000000000008', 'APPROVED', 'Approved');
 
 create table products
 (
@@ -32,7 +33,7 @@ create table products
     description varchar(2000) not null,
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
-    archived_at timestamptz
+    archived_at timestamptz,
     attributes  jsonb
 );
 
