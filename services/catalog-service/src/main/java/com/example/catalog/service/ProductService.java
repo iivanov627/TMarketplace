@@ -58,11 +58,11 @@ public class ProductService {
         try {
             Page<ProductSearchDocument> results =
                     elasticsearchSearch.searchPublished(
-                        normalizedQuery,
-                        categoryId,
-                        minPrice,
-                        maxPrice,
-                        pageable
+                            normalizedQuery,
+                            categoryId,
+                            minPrice,
+                            maxPrice,
+                            pageable
                     );
             return results.map(this::toResponse);
 
