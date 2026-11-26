@@ -35,7 +35,7 @@ class SecurityConfig(
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
-                it.requestMatchers("/actuator/health").permitAll()
+                it.requestMatchers("/actuator/health", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 it.anyRequest().authenticated()
             }
             .oauth2ResourceServer { it.jwt { } }
