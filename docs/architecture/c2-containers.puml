@@ -1,4 +1,6 @@
 @startuml c2-containers
+!$NEW_C4_STYLE=1
+!$ROUNDED_STYLE=1
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
 title C2 - Marketplace Container Diagram

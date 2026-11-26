@@ -1,4 +1,6 @@
 @startuml c1-context
+!$NEW_C4_STYLE=1
+!$ROUNDED_STYLE=1
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
 title C1 - Marketplace System Context

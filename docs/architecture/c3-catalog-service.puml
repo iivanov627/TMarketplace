@@ -1,4 +1,6 @@
 @startuml c3-catalog
+!$NEW_C4_STYLE=1
+!$ROUNDED_STYLE=1
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
 title C3 - catalog-service Components
