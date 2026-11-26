@@ -1,2 +1,0 @@
-﻿// getProfile, updateProfile
-export {};

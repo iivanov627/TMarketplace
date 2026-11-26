@@ -23,6 +23,14 @@ export const sessionApi = {
     return data;
   },
 
+  async logout(refreshToken: string): Promise<void> {
+    await apiClient.post(
+      '/auth/logout',
+      { refreshToken },
+      { baseURL: '' },
+    );
+  },
+
   // Токен передаём вручную, так как в хранилище он ещё не сохранён
   async whoami(accessToken: string): Promise<UserResponse> {
     const { data } = await apiClient.get<UserResponse>('/auth/whoami', {

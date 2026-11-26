@@ -1,4 +1,4 @@
-import { pickRole, sessionApi, sessionStore } from '../../../entities/session';
+import { pickRole, sessionApi, sessionStore } from '..';
 
 export async function signIn(values: { login: string; password: string }) {
   const tokens = await sessionApi.login({

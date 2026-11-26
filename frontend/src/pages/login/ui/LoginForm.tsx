@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { isApiError } from '../../../shared/api';
 import { notifyError } from '../../../shared/lib/notify/notifyError';
-import { signIn } from '../model/signIn';
+import { signIn } from '../../../entities/session/model/signIn';
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
