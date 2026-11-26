@@ -3,14 +3,14 @@ import { useDocumentTitle } from '@mantine/hooks';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
-import { ProductCard, ProductCardSkeleton, useProducts } from '../../entities/product';
-import { ROUTES } from '../../shared/config/routes';
-import { getErrorMessage } from '../../shared/lib/errors/getErrorMessage';
-import { EmptyState, ErrorState } from '../../shared/ui';
+import { ProductCard, ProductCardSkeleton, useProducts } from '../../../entities/product';
+import { ROUTES } from '../../../shared/config/routes';
+import { getErrorMessage } from '../../../shared/lib/errors/getErrorMessage';
+import { EmptyState, ErrorState } from '../../../shared/ui';
 
-import { CatalogFilters } from './components/CatalogFilters';
-import { useCatalogParams } from './components/useCatalogParams';
-import { PAGE_SIZE } from './model/constants';
+import { CatalogFilters } from './CatalogFilters';
+import { useCatalogParams } from '../model/useCatalogParams';
+import { PAGE_SIZE } from '../model/constants';
 
 // Адаптивная сетка: 2 колонки на телефоне, 3 на планшете, 4 на десктопе
 const GRID_COLS = { base: 2, sm: 3, md: 4 };

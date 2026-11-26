@@ -1,2 +1,3 @@
 export type { Role, Viewer } from './model/types';
-export { useViewer } from './model/useViewer';
+export { sessionStore, useViewer } from './model/sessionStore';
+export { sessionApi, pickRole } from './api/sessionApi';

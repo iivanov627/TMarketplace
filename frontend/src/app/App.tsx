@@ -7,6 +7,13 @@ import { cssVariablesResolver, theme } from "../shared/config/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Notifications } from "@mantine/notifications";
 import { ErrorBoundary } from "../shared/ui/ErrorBoundary";
+import { configureApiClient } from "../shared/api";
+import { sessionStore } from "../entities/session";
+
+configureApiClient({
+  getAccessToken: () => sessionStore.getState().accessToken,
+  onUnauthorized: () => sessionStore.clear(),
+});
 
 const queryClient = new QueryClient();
 

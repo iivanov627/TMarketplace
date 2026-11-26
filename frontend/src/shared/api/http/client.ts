@@ -31,7 +31,7 @@ export const apiClient = axios.create({
   },
 });
 
-// 2. Проверяем `!config.skipAuth`
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (!config.skipAuth) {
     const token = clientConfig.getAccessToken?.();
@@ -102,7 +102,7 @@ apiClient.interceptors.response.use(
       originalError: axiosError,
     });
 
-    // 3. Проверяем `!axiosError.config?.skipAuth`
+    
     if (status === 401 && !axiosError.config?.skipAuth) {
       clientConfig.onUnauthorized?.(apiError);
     }

@@ -1,2 +1,0 @@
-﻿// LoginRequest, AuthResponse
-export {};
