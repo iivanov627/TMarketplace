@@ -1,1 +1,1 @@
-export { CatalogPage } from './components/CatalogPage'
+export { CatalogPage } from './ui/CatalogPage'

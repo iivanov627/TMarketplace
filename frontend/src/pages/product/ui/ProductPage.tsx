@@ -10,6 +10,9 @@ import { getErrorMessage } from '../../../shared/lib/errors/getErrorMessage';
 import { useGoBack } from '../../../shared/lib/navigation/useGoBack';
 import { Amount, CircleIconButton, EmptyState, ErrorState, ProductImage } from '../../../shared/ui';
 
+import { notifications } from '@mantine/notifications';
+import { useViewer } from '../../../entities/session';
+
 import { ProductPageSkeleton } from './ProductPageSkeleton';
 
 export function ProductPage() {
@@ -18,19 +21,24 @@ export function ProductPage() {
   const location = useLocation();
   const goBack = useGoBack(ROUTES.CATALOG);
 
-  // Временная заглушка авторизации (как в каталоге)
-  const isAuthenticated = false;
+  const viewer = useViewer();
+  const isGuest = viewer.role === 'guest';
+  const canBuy = viewer.role === 'guest' || viewer.role === 'buyer';
 
   const { data: product, isPending, isError, error, refetch } = useProduct(id);
 
   useDocumentTitle(product?.name ?? 'Товар');
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
+    if (isGuest) {
       navigate(ROUTES.LOGIN, { state: { from: location } });
       return;
     }
-    console.log('Добавляем товар в корзину:', id);
+    notifications.show({
+      title: 'Добавлено в корзину',
+      message: `Товар «${product?.name}» добавлен в корзину`,
+      color: 'green',
+    });
   };
 
   if (isError) {
@@ -98,22 +106,25 @@ export function ProductPage() {
       )}
 
       
-      <Box pt="sm">
-        <Button
-          fullWidth
-          size="lg"
-          leftSection={<IconShoppingCart size={20} />}
-          disabled={isOutOfStock}
-          onClick={handleAddToCart}
-        >
-          {isOutOfStock ? 'Нет в наличии' : 'Добавить в корзину'}
-        </Button>
-        {!isAuthenticated && !isOutOfStock && (
-          <Text size="xs" c="dimmed" ta="center" mt={6}>
-            Войдите в аккаунт, чтобы добавить товар в корзину
-          </Text>
-        )}
-      </Box>
+      
+  {canBuy && (
+    <Box pt="sm">
+      <Button
+        fullWidth
+        size="lg"
+        leftSection={<IconShoppingCart size={20} />}
+        disabled={isOutOfStock}
+        onClick={handleAddToCart}
+      >
+        {isOutOfStock ? 'Нет в наличии' : 'Добавить в корзину'}
+      </Button>
+      {isGuest && !isOutOfStock && (
+        <Text size="xs" c="dimmed" ta="center" mt={6}>
+          Войдите в аккаунт, чтобы добавить товар в корзину
+        </Text>
+      )}
+    </Box>
+  )}
     </Stack>
   );
 }
