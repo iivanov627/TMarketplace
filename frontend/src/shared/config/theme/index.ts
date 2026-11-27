@@ -30,7 +30,8 @@ export const theme = createTheme({
   components: {
     Button: {
       defaultProps: {
-        radius: 8,
+        radius: 'lg',
+        size: 'lg',
       },
       styles: {
         root: {
@@ -42,37 +43,37 @@ export const theme = createTheme({
     },
     TextInput: {
       defaultProps: {
-        radius: 8,
-        size: 'md',
+        radius: 'lg',
+        size: 'lg',
       },
     },
     PasswordInput: {
       defaultProps: {
-        radius: 8,
-        size: 'md',
+        radius: 'lg',
+        size: 'lg',
       },
     },
     Select: {
       defaultProps: {
-        radius: 8,
-        size: 'md',
+        radius: 'lg',
+        size: 'lg',
       },
     },
     Textarea: {
       defaultProps: {
-        radius: 8,
-        size: 'md',
+        radius: 'lg',
+        size: 'lg',
       },
     },
     NumberInput: {
       defaultProps: {
-        radius: 8,
-        size: 'md',
+        radius: 'lg',
+        size: 'lg',
       },
     },
     Checkbox: {
       defaultProps: {
-        radius: 4,
+        radius: 'md',
       },
     },
     Radio: {

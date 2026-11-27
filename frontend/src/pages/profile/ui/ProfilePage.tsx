@@ -1,4 +1,4 @@
-﻿import { Badge, Group, Paper, Stack, Text } from '@mantine/core';
+﻿import { Group, Paper, Stack, Text } from '@mantine/core';
 import { useDocumentTitle } from '@mantine/hooks';
 import { Navigate } from 'react-router';
 

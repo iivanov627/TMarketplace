@@ -1,2 +1,0 @@
-﻿// RegisterBuyerRequest, RegisterSellerRequest
-export {};

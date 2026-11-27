@@ -40,6 +40,14 @@ export const sessionApi = {
     });
     return data;
   },
+
+  async register(body: { login: string; password: string }): Promise<UserResponse> {
+    const { data } = await apiClient.post<UserResponse>('/auth/register', body, {
+      baseURL: '',
+      skipAuth: true,
+    });
+    return data;
+  },
 };
 
 export function pickRole(roles: string[] = []): Role {
