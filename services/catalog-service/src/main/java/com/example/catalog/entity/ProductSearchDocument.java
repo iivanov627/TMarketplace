@@ -19,11 +19,13 @@ public record ProductSearchDocument(
         @Field(type = FieldType.Double) BigDecimal price,
         @Field(type = FieldType.Integer) Integer stock,
         @Field(type = FieldType.Keyword) ProductStatus status,
-        @Field(type = FieldType.Date) Instant createdAt) {
+        @Field(type = FieldType.Date) String createdAt) {
 
     public static ProductSearchDocument from(Product product) {
         return new ProductSearchDocument(product.getId(), product.getSellerId(), product.getCategory().getId(),
                 product.getName(), product.getDescription(), product.getPrice(), product.getStock(),
-                product.getStatus(), product.getCreatedAt());
+                product.getStatus(), product.getCreatedAt() != null
+                ? product.getCreatedAt().toString()
+                : null);
     }
 }

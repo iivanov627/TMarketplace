@@ -12,9 +12,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "products")
@@ -76,6 +79,9 @@ public class Product {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private JsonNode attributes;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
 
     public BigDecimal getPrice() {
         if (productPrices != null && !productPrices.isEmpty()) {

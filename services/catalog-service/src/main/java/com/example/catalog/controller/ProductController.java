@@ -24,9 +24,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,12 +42,30 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Список опубликованных товаров")
-    public List<ProductResponse> getPublishedProducts(
+    public Page<ProductResponse> getProducts(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice) {
-        return productService.getPublishedProducts(q, categoryId, minPrice, maxPrice);
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @PageableDefault(
+                    size = 20,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable
+    ) {
+        if (pageable.getPageSize() < 1 || pageable.getPageSize() > 100) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Page size must be between 1 and 100"
+            );
+        }
+        return productService.getProducts(
+                q,
+                categoryId,
+                minPrice,
+                maxPrice,
+                pageable
+        );
     }
 
     @GetMapping("/{productId}")
@@ -132,6 +153,19 @@ public class ProductController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can reject products");
         }
         return productService.rejectProduct(productId);
+    }
+
+    @PostMapping("/{productId}/publish")
+    @Operation(summary = "Опубликовать товар")
+    @SecurityRequirement(name = "bearerAuth")
+    public ProductResponse publishProduct(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID productId) {
+
+        boolean admin = isAdmin(jwt);
+        UUID sellerId = admin ? null : currentUserId(jwt);
+
+        return productService.publishProduct(productId, sellerId, admin);
     }
 
     @PatchMapping("/{productId}/archive")

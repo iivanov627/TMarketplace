@@ -5,6 +5,8 @@ import com.example.catalog.entity.ProductStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,11 +22,12 @@ public interface ProductSearchAliasRepository extends JpaRepository<ProductSearc
               and (:maxPrice is null or p.price <= :maxPrice)
             order by p.createdAt desc
             """)
-    List<ProductSearchAlias> searchWithoutText(
+    Page<ProductSearchAlias> searchWithoutText(
             @Param("status") ProductStatus status,
             @Param("categoryId") UUID categoryId,
             @Param("minPrice") BigDecimal minPrice,
-            @Param("maxPrice") BigDecimal maxPrice);
+            @Param("maxPrice") BigDecimal maxPrice,
+            Pageable pageable);
 
     @Query("""
             select p from ProductSearchAlias p
@@ -36,10 +39,14 @@ public interface ProductSearchAliasRepository extends JpaRepository<ProductSearc
                    or lower(p.description) like lower(concat('%', :query, '%')))
             order by p.createdAt desc
             """)
-    List<ProductSearchAlias> searchWithText(
+    Page<ProductSearchAlias> searchWithText(
             @Param("status") ProductStatus status,
             @Param("categoryId") UUID categoryId,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
-            @Param("query") String query);
+            @Param("query") String query,
+            Pageable pageable);
+
+    void deleteByProductId(UUID productId);
+
 }
