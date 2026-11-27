@@ -1,0 +1,36 @@
+@startuml c3-catalog
+!$NEW_C4_STYLE=1
+!$ROUNDED_STYLE=1
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C3 - catalog-service Components
+
+Container_Boundary(catalog, "catalog-service") {
+    Component(controller, "ProductController", "REST Controller", "HTTP API каталога и управления товарами")
+    Component(service, "ProductService", "Application Service", "Создание, редактирование, скрытие, архивация и удаление товаров")
+    Component(moderation, "ModerationService", "Domain Service", "Одобрение и отклонение товаров, если включён процесс модерации")
+    Component(repository, "ProductRepository", "Repository", "Чтение и сохранение товаров")
+    Component(outbox, "OutboxPublisher", "Infrastructure", "Публикация product.events через Transactional Outbox")
+    Component(storage, "ImageStorageAdapter", "Infrastructure Adapter", "Загрузка изображений в MinIO через S3 API")
+    Component(search, "SearchIndexAdapter", "Infrastructure Adapter", "Обновление поискового индекса Elasticsearch")
+    Component(stock, "InventoryService", "Optional Domain Service", "Остатки и проверка наличия: Could-функции R2-06 и R2-07")
+}
+
+ContainerDb(db, "PostgreSQL", "Database", "Данные каталога")
+ContainerQueue(kafka, "Kafka", "Event Broker", "Топик product.events")
+ContainerDb(minio, "MinIO", "S3-compatible Storage")
+ContainerDb(es, "Elasticsearch", "Search Index")
+
+Rel(controller, service, "Вызывает")
+Rel(service, moderation, "Передаёт товар на модерацию")
+Rel(service, repository, "Чтение/запись")
+Rel(service, storage, "Сохраняет изображения")
+Rel(service, search, "Инициирует обновление индекса")
+Rel(service, stock, "Использует при включённом учёте остатков")
+Rel(repository, db, "SQL")
+Rel(service, outbox, "Записывает событие в той же транзакции")
+Rel(outbox, kafka, "Публикует product.events")
+Rel(storage, minio, "S3 API")
+Rel(search, es, "Обновляет индекс")
+
+@enduml

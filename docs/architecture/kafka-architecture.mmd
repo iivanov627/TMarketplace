@@ -1,0 +1,50 @@
+flowchart TB
+ subgraph MS["Сервисы"]
+        AUTH["auth-service"]
+        USER["user-service"]
+        CAT["catalog-service"]
+        CART["cart-service"]
+        ORD["order-service"]
+        BONUS["bonus-service"]
+        NOTIFY["notification-service"]
+  end
+ subgraph KAFKA["Брокер Kafka"]
+    direction TB
+        KA[("auth.events")]
+        KP[("product.events")]
+        KC[("cart.events")]
+        KO[("order.events")]
+        KB[("bonus.events")]
+        KNOT[("notification.events")]
+  end
+    AUTH -- user_registered<br>login_succeeded<br>login_failed --> KA
+    KA --> USER & NOTIFY
+    USER -- "user.updated" --> KA
+    CAT -- "product.created<br>product.approved<br>product.rejected<br>product.updated<br>product.hidden<br>product.restored<br>product.archived<br>product.out_of_stock" --> KP
+    KP --> CART & NOTIFY & ES["Elasticsearch Indexer"]
+    CART -- "cart.item_added<br>cart.item_removed<br>cart.cleared<br>cart.item_unavailable" --> KC
+    KC --> NOTIFY
+    ORD -- "order.created<br>order.status_changed<br>order.cancelled" --> KO
+    KO --> BONUS & NOTIFY
+    BONUS -- "bonus.account_created<br>bonus.credited<br>bonus.debited<br>bonus.refunded" --> KB
+    KB --> ORD & NOTIFY
+    ORD -- "payment.succeeded<br>payment.failed" --> KO
+    NOTIFY -- "notification.sent<br>notification.failed" --> KNOT
+
+     AUTH:::service
+     USER:::service
+     CAT:::service
+     CART:::service
+     ORD:::service
+     BONUS:::service
+     NOTIFY:::service
+     KA:::broker
+     KP:::broker
+     KC:::broker
+     KO:::broker
+     KB:::broker
+     KNOT:::broker
+     ES:::external
+    classDef service fill:#252d3a,stroke:#8ba4c8,color:#fff
+    classDef broker fill:#45351d,stroke:#d6a44b,color:#fff
+    classDef external fill:#173b46,stroke:#54a9bd,color:#fff

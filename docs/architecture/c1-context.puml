@@ -1,0 +1,18 @@
+@startuml c1-context
+!$NEW_C4_STYLE=1
+!$ROUNDED_STYLE=1
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C1 - Marketplace System Context
+
+Person(buyer, "Buyer", "Отдельная сущность покупателя")
+Person(seller, "Seller", "Отдельная сущность продавца")
+Person(admin, "Admin", "Отдельная сущность администратора")
+
+System(marketplace, "Marketplace", "Каталог, корзина, заказы, оплата бонусами и управление товарами")
+
+Rel(buyer, marketplace, "Просматривает каталог, оформляет и отслеживает заказы")
+Rel(seller, marketplace, "Создаёт товары и обрабатывает заказы со своими товарами")
+Rel(admin, marketplace, "Управляет товарами, заказами и бонусными начислениями")
+
+@enduml

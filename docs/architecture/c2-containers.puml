@@ -1,0 +1,68 @@
+@startuml c2-containers
+!$NEW_C4_STYLE=1
+!$ROUNDED_STYLE=1
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C2 - Marketplace Container Diagram
+
+Person(buyer, "Buyer", "Покупатель")
+Person(seller, "Seller", "Продавец")
+Person(admin, "Admin", "Администратор")
+
+System_Boundary(mp, "Marketplace") {
+    Container(browser, "Browser", "Web Browser", "Интерфейс пользователей")
+    Container(nginx, "Nginx", "Reverse Proxy", "Входная точка и проксирование")
+    Container(frontend, "Frontend", "Web Application", "Пользовательский интерфейс")
+    Container(gateway, "API Gateway", "Spring Boot", "Маршрутизация REST-запросов и проверка JWT")
+
+    Container(auth, "auth-service", "Spring Boot", "Регистрация, вход, access и refresh токены")
+    Container(user, "user-service", "Spring Boot", "Профили покупателя и данные организации продавца")
+    Container(catalog, "catalog-service", "Spring Boot", "Каталог, управление товарами и модерация")
+    Container(cart, "cart-service", "Spring Boot", "Корзины покупателей")
+    Container(order, "order-service", "Spring Boot", "Заказы, позиции и статусы")
+    Container(bonus, "bonus-service", "Spring Boot", "Бонусные счета, начисления, списания и возвраты")
+
+    ContainerDb(postgres, "PostgreSQL", "Relational Database", "Логически раздельные данные сервисов")
+    ContainerQueue(kafka, "Apache Kafka", "Event Broker", "Асинхронные команды и доменные события")
+    ContainerDb(minio, "MinIO", "S3-compatible Object Storage", "Изображения товаров")
+    ContainerDb(es, "Elasticsearch", "Search Engine", "Полнотекстовый поисковый индекс")
+}
+
+Rel(buyer, browser, "Использует")
+Rel(seller, browser, "Использует")
+Rel(admin, browser, "Использует")
+
+Rel(browser, nginx, "HTTPS")
+Rel(nginx, frontend, "Отдаёт frontend")
+Rel(nginx, gateway, "Проксирует API")
+Rel(frontend, gateway, "REST/HTTPS")
+
+Rel(gateway, auth, "REST")
+Rel(gateway, user, "REST")
+Rel(gateway, catalog, "REST")
+Rel(gateway, cart, "REST")
+Rel(gateway, order, "REST")
+Rel(gateway, bonus, "REST")
+
+Rel(auth, postgres, "SQL")
+Rel(user, postgres, "SQL")
+Rel(catalog, postgres, "SQL")
+Rel(cart, postgres, "SQL")
+Rel(order, postgres, "SQL")
+Rel(bonus, postgres, "SQL")
+
+Rel(catalog, minio, "S3 API: загрузка изображений")
+Rel(catalog, es, "Обновление поискового индекса")
+
+Rel(user, kafka, "Публикует buyer.registered")
+Rel(kafka, bonus, "buyer.registered: создание бонусного счёта")
+
+Rel(catalog, kafka, "Публикует product.events")
+Rel(kafka, cart, "product.events: изменения доступности товара")
+
+Rel(order, kafka, "Публикует bonus.commands и order.events")
+Rel(kafka, bonus, "bonus.commands: списание или возврат бонусов")
+Rel(bonus, kafka, "Публикует bonus.events")
+Rel(kafka, order, "bonus.events: результат операции с бонусами")
+
+@enduml
