@@ -1,4 +1,4 @@
-import { Anchor, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Divider, Stack, Text, Title } from '@mantine/core';
 import { useDocumentTitle } from '@mantine/hooks';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Link, Navigate, useLocation } from 'react-router';
@@ -6,6 +6,7 @@ import { Link, Navigate, useLocation } from 'react-router';
 import { useViewer } from '../../../entities/session';
 import { ROUTES } from '../../../shared/config/routes';
 import { LoginForm } from './LoginForm';
+import { TBankLoginButton } from './TBankLoginButton';
 
 function getRedirectPath(state: unknown): string {
   const from = (state as { from?: { pathname?: string; search?: string } } | null)?.from;
@@ -34,7 +35,7 @@ export function LoginPage() {
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" pb="xl" maw={480} mx="auto" w="100%">
       <Anchor
         component={Link}
         to={ROUTES.CATALOG}
@@ -53,6 +54,10 @@ export function LoginPage() {
       </Title>
 
       <LoginForm />
+
+      <Divider label="или" labelPosition="center" />
+
+      <TBankLoginButton />
 
       <Text ta="center" size="sm" c="dimmed">
         Нет аккаунта?{' '}
